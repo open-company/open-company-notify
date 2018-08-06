@@ -1,0 +1,20 @@
+(ns oc.notify.db.migrations.add-notification
+  (:require [taoensso.faraday :as far]
+            [oc.lib.db.migrations :as m]
+            [oc.notify.config :as config]
+            [oc.notify.resources.notification :as notification]))
+
+;; NB: The fact that these migrations have been run already does not currently persist, so the up method
+;; need to be idempotent
+(defn up [dynamodb-opts]
+
+  ;; Create new table if needed
+  (println
+    (far/ensure-table dynamodb-opts
+      notification/table-name
+      [:user_id :s]
+      {:range-keydef [:notify_at :s]
+       :throughput {:read 1 :write 1}
+       :block? true}))
+
+  true) ; return true on success
