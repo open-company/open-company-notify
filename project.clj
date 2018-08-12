@@ -41,12 +41,11 @@
     [org.apache.httpcomponents/httpclient "4.5.6"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.16.10"]
+    [open-company/lib "0.16.13"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
-    ;; if-let - More than one binding for if/when macros https://github.com/LockedOn/if-let
     ;; Component - Component Lifecycle https://github.com/stuartsierra/component
     ;; Schema - Data validation https://github.com/Prismatic/schema
     ;; Timbre - Pure Clojure/Script logging library https://github.com/ptaoussanis/timbre
@@ -57,6 +56,7 @@
     ;; clj-time - Date and time lib https://github.com/clj-time/clj-time
     ;; Environ - Get environment settings from different sources https://github.com/weavejester/environ
     ;; Sente - WebSocket server https://github.com/ptaoussanis/sente
+    ;; HTML as data https://github.com/davidsantiago/hickory
   ]
 
   ;; All profile plugins
@@ -194,8 +194,6 @@
     :exclude-namespaces [:test-paths]
   }
 
-  :zprint {:old? false}
-  
   ;; ----- API -----
 
   :ring {

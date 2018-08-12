@@ -103,7 +103,7 @@ You can also override these settings with environmental variables in the form of
 
 You will also need to subscribe the SQS queue to the storage and interaction SNS topics. To do this you will need to go to the AWS console and follow these instruction:
 
-Go to the AWS SQS Console and select the change queue configured above. From the 'Queue Actions' dropdown, select 'Subscribe Queue to SNS Topic'. Select the SNS topic you've configured your Storage Service instance to publish to, and click the 'Subscribe' button.
+Go to the AWS SQS Console and select the change queue configured above. From the 'Queue Actions' dropdown, select 'Subscribe Queue to SNS Topic'. Select the SNS topic you've configured your Storage Service instance to publish to, and click the 'Subscribe' button. Repeat the process for the SNS topic you've configured your Interaction Service instance to publish to.
 
 
 ## Usage

@@ -21,7 +21,10 @@
     [oc.lib.async.watcher :as watcher]
     [oc.notify.config :as c]
     [oc.notify.api.websockets :as websockets-api]
-    [oc.notify.async.persistence :as persistence]))
+    [oc.notify.async.persistence :as persistence]
+    [oc.notify.lib.mention :as mention]))
+
+(def draft-board-uuid "0000-0000-0000")
 
 ;; ----- Unhandled Exceptions -----
 
@@ -40,11 +43,12 @@
 
 (defn sqs-handler
   "
-  Handle an incoming SQS message to the notify service.
+  Handle an incoming SQS message from storage to the notify service.
 
   {
     :notification-type 'add|update|delete',
     :notification-at ISO8601,
+    :resource-type 'entry|comment'
     :user {...},
     :org {...},
     :board {...},
@@ -53,31 +57,40 @@
   }
   "
   [msg done-channel]
-  ; (let [body (clojure.walk/keywordize-keys (json/parse-string (:body msg)))
-  ;       msg-body (clojure.walk/keywordize-keys (json/parse-string (:Message body)))
-  ;       error (if (:test-error msg-body) (/ 1 0) false) ; a message testing Sentry error reporting
-  ;       change-type (keyword (:notification-type msg-body))
-  ;       resource-type (keyword (:resource-type msg-body))
-  ;       container-id (or (-> msg-body :board :uuid) ; entry or board
-  ;                        (-> msg-body :org :uuid)) ; org
-  ;       item-id (or (-> msg-body :content :new :uuid) ; new or update
-  ;                   (-> msg-body :content :old :uuid)) ; delete
-  ;       change-at (or (-> msg-body :content :new :updated-at) ; add / update
-  ;                     (:notification-at msg-body)) ; delete
-  ;       draft? (or (= container-id draft-board-uuid)
-  ;                  (= "draft" (or (-> msg-body :content :new :status)
-  ;                             (and (= change-type "delete") (-> msg-body :content :old :status)))))
-  ;       user-id (-> msg-body :user :user-id)]
-  ;   (timbre/info "Received message from SQS:" msg-body)
-  ;   (if (and
-  ;         (not draft?)
-  ;         (or (= change-type :add) (= change-type :update) (= change-type :delete))
-  ;         (or (= resource-type :entry) (= resource-type :board)))
+  (let [body (clojure.walk/keywordize-keys (json/parse-string (:body msg)))
+        msg-body (clojure.walk/keywordize-keys (json/parse-string (:Message body)))
+        error (if (:test-error msg-body) (/ 1 0) false) ; a message testing Sentry error reporting
+        change-type (keyword (:notification-type msg-body))
+        resource-type (keyword (:resource-type msg-body))
+        container-id (or (-> msg-body :board :uuid) ; entry or board
+                         (-> msg-body :org :uuid)) ; org
+        item-id (or (-> msg-body :content :new :uuid) ; new or update
+                    (-> msg-body :content :old :uuid)) ; delete
+        change-at (or (-> msg-body :content :new :updated-at) ; add / update
+                      (:notification-at msg-body)) ; delete
+        draft? (or (= container-id draft-board-uuid)
+                   (= "draft" (or (-> msg-body :content :new :status)
+                              (and (= change-type "delete") (-> msg-body :content :old :status)))))
+        user-id (-> msg-body :user :user-id)
+        comment? (= resource-type :comment)
+        entry? (= resource-type :entry)]
+    (timbre/trace "Received message from SQS:" msg-body)
+    (if (and
+          (not draft?)
+          (or (= change-type :add) (= change-type :update))
+          (or entry? comment?))
       
-  ;     ;; Add/update/delete of entry/board
-  ;     (do
-  ;       (timbre/info "Requesting persistence for entry add/update/delete msg from SQS.")
-  ;       (>!! persistence/persistence-chan (merge msg-body {:change true
+      ;; Add/update of entry/comment
+      (do
+        (timbre/info "Processing change for mentions...")
+        (let [new-body (-> msg-body :content :new :body)
+              old-body (-> msg-body :content :old :body)
+              mentions (mention/extract-mentions new-body)
+              old-mentions (mention/extract-mentions old-body)
+              new-mentions []]
+          (when (not-empty new-mentions)
+            (timbre/info "Requesting persistence for" (count new-mentions) "mention(s)."))))
+  ;        (>!! persistence/persistence-chan (merge msg-body {:change true
   ;                                                          :change-type change-type
   ;                                                          :change-at change-at
   ;                                                          :container-id container-id
@@ -95,16 +108,20 @@
   ;                                            :user-id user-id
   ;                                            :change-at change-at}}))
       
-  ;     ;; Org draft or unknown
-  ;     (cond
-  ;       (= resource-type :org)
-  ;       (timbre/warn "Unhandled org message from SQS:" change-type resource-type)
+      ;; Org, board, draft or unknown
+      (cond
+        (= resource-type :org)
+        (timbre/trace "Unhandled org message from SQS:" change-type resource-type)
  
-  ;       draft?
-  ;       (timbre/info "Skipping draft message from SQS:" change-type resource-type)
+        (= resource-type :board)
+        (timbre/trace "Unhandled board message from SQS:" change-type resource-type)
+ 
+        draft?
+        (timbre/trace "Skipping draft message from SQS:" change-type resource-type)
 
-  ;       :else
-  ;       (timbre/warn "Unknown message from SQS:" change-type resource-type))))
+        :else
+        (timbre/warn "Unknown message from SQS:" change-type resource-type))))
+
   (sqs/ack done-channel msg))
 
 ;; ----- Request Routing -----
