@@ -85,9 +85,9 @@
         (timbre/info "Processing change for mentions...")
         (let [new-body (-> msg-body :content :new :body)
               old-body (-> msg-body :content :old :body)
-              mentions (mention/extract-mentions new-body)
-              old-mentions (mention/extract-mentions old-body)
-              new-mentions []]
+              mentions (mention/mention-parents new-body)
+              prior-mentions (mention/mention-parents old-body)
+              new-mentions (mention/new-mentions prior-mentions mentions)]
           (when (not-empty new-mentions)
             (timbre/info "Requesting persistence for" (count new-mentions) "mention(s)."))))
   ;        (>!! persistence/persistence-chan (merge msg-body {:change true
