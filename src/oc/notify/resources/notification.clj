@@ -14,11 +14,16 @@
 
 ;; ----- Schema -----
 
+(def Mention {
+  :user-id lib-schema/UniqueID
+  :mention {schema/Keyword schema/Any}
+  :parent lib-schema/NonBlankStr})
+
 (def Notification {
   :user-id lib-schema/UniqueID
   :board-id lib-schema/UniqueID
   :entry-id lib-schema/UniqueID
-  :interaction-id lib-schema/UniqueID
+  (schema/optional-key :interaction-id) lib-schema/UniqueID
   :notify-at lib-schema/ISO8601
   :content lib-schema/NonBlankStr
   :mention schema/Bool
@@ -27,16 +32,21 @@
 ;; ----- Constructor -----
 
 (schema/defn ^:always-validate ->Notification :- Notification
-  [user-id :- lib-schema/UniqueID board-id :- lib-schema/UniqueID entry-id :- lib-schema/UniqueID
-   interaction-id :- lib-schema/UniqueID content :- lib-schema/NonBlankStr author :- lib-schema/Author]
-   {:user-id user-id
+  ([mention board-id entry-id interaction-id :- lib-schema/UniqueID change-at author]
+  (assoc (->Notification mention board-id entry-id change-at author) :interaction-id interaction-id))
+
+  ([mention :- Mention
+   board-id :- lib-schema/UniqueID
+   entry-id :- lib-schema/UniqueID
+   change-at :- lib-schema/ISO8601
+   author :- lib-schema/Author]
+   {:user-id (:user-id mention)
     :board-id board-id
     :entry-id entry-id
-    :interaction-id interaction-id
-    :notify-at (oc-time/current-timestamp)
-    :content content
-    :mention false
-    :author author})
+    :notify-at change-at
+    :content (:parent mention)
+    :mention true
+    :author author}))
 
 ;; ----- DB Operations -----
 
@@ -66,7 +76,9 @@
 
 (comment
 
+  (require '[oc.lib.time :as oc-time])
   (require '[oc.notify.resources.notification :as notification] :reload)
+  (require '[oc.notify.lib.mention :as mention] :reload)
 
   (far/list-tables c/dynamodb-opts)
 
@@ -86,14 +98,18 @@
     :name "Wile E. Coyote"
     :avatar-url "http://www.emoticonswallpapers.com/avatar/cartoons/Wiley-Coyote-Dazed.jpg"})
 
-  (def reply (notification/->Notification "1111-1111-1111" "2222-2222-2222" "3333-3333-3333" "4444-4444-4444"
-    "Reply to me." coyote))
-  (notification/store! reply)
-  (notification/retrieve "1111-1111-1111")
+  (def mention1 (first (mention/new-mentions [] [(first (mention/mention-parents
+    "<p>I'm not sure <span
+      class='medium-editor-mention-at oc-mention'
+      data-first-name='Albert'
+      data-last-name='Camus'
+      data-user-id='1111-1111-1111'
+      data-email='camus@combat.org'
+      data-avatar-url='...'
+      data-found='true'>@Albert Camus</span>, what do you think about this?"))])))
 
-  (def mention (notification/->Notification "1111-1111-1111" "2222-2222-2222" "3333-3333-3333" "5555-5555-5555"
-    "Mention @me." coyote))
-  (notification/store! mention)
+  (def n1 (notification/->Notification mention1 "2222-2222-2222" "3333-3333-3333" (oc-time/current-timestamp) coyote))
+  (notification/store! n1)
   (notification/retrieve "1111-1111-1111")
 
 )

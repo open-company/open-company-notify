@@ -16,13 +16,15 @@
     [compojure.core :as compojure :refer (GET)]
     [com.stuartsierra.component :as component]
     [oc.lib.sentry-appender :as sa]
-    [oc.notify.components :as components]
+    [oc.lib.schema :as lib-schema]
     [oc.lib.sqs :as sqs]
     [oc.lib.async.watcher :as watcher]
+    [oc.notify.components :as components]
     [oc.notify.config :as c]
     [oc.notify.api.websockets :as websockets-api]
     [oc.notify.async.persistence :as persistence]
-    [oc.notify.lib.mention :as mention]))
+    [oc.notify.lib.mention :as mention]
+    [oc.notify.resources.notification :as notification]))
 
 (def draft-board-uuid "0000-0000-0000")
 
@@ -62,16 +64,16 @@
         error (if (:test-error msg-body) (/ 1 0) false) ; a message testing Sentry error reporting
         change-type (keyword (:notification-type msg-body))
         resource-type (keyword (:resource-type msg-body))
-        container-id (or (-> msg-body :board :uuid) ; entry or board
-                         (-> msg-body :org :uuid)) ; org
+        board-id (-> msg-body :board :uuid)
         item-id (or (-> msg-body :content :new :uuid) ; new or update
                     (-> msg-body :content :old :uuid)) ; delete
         change-at (or (-> msg-body :content :new :updated-at) ; add / update
                       (:notification-at msg-body)) ; delete
-        draft? (or (= container-id draft-board-uuid)
+        draft? (or (= board-id draft-board-uuid)
                    (= "draft" (or (-> msg-body :content :new :status)
                               (and (= change-type "delete") (-> msg-body :content :old :status)))))
-        user-id (-> msg-body :user :user-id)
+        author (lib-schema/author-for-user (-> msg-body :user))
+        user-id (:user-id author)
         comment? (= resource-type :comment)
         entry? (= resource-type :entry)]
     (timbre/trace "Received message from SQS:" msg-body)
@@ -89,14 +91,19 @@
               prior-mentions (mention/mention-parents old-body)
               new-mentions (mention/new-mentions prior-mentions mentions)]
           (when (not-empty new-mentions)
-            (timbre/info "Requesting persistence for" (count new-mentions) "mention(s)."))))
-  ;        (>!! persistence/persistence-chan (merge msg-body {:change true
-  ;                                                          :change-type change-type
-  ;                                                          :change-at change-at
-  ;                                                          :container-id container-id
-  ;                                                          :resource-type resource-type
-  ;                                                          :item-id item-id
-  ;                                                          :author-id user-id}))
+            (timbre/info "Requesting persistence for" (count new-mentions) "mention(s).")
+            (doseq [mention new-mentions]
+              (let [notification (notification/->Notification mention board-id item-id change-at author)]
+                (timbre/trace "Storing notification:" notification)
+                (notification/store! notification))))))
+            ; (>!! persistence/persistence-chan (merge msg-body {:change true
+            ;                                                    :change-type change-type
+            ;                                                    :change-at change-at
+            ;                                                    :container-id container-id
+            ;                                                    :resource-type resource-type
+            ;                                                    :item-id item-id
+            ;                                                    :author-id user-id
+            ;                                                    :mention mention}))
         
   ;       (timbre/info "Alerting watcher of add/update/delete msg from SQS.")
   ;       (>!! watcher/watcher-chan {:send true

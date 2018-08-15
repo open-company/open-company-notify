@@ -56,7 +56,7 @@
     ;; clj-time - Date and time lib https://github.com/clj-time/clj-time
     ;; Environ - Get environment settings from different sources https://github.com/weavejester/environ
     ;; Sente - WebSocket server https://github.com/ptaoussanis/sente
-    ;; HTML as data https://github.com/davidsantiago/hickory
+    ;; Hickory - HTML as data https://github.com/davidsantiago/hickory
   ]
 
   ;; All profile plugins

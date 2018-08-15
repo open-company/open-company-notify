@@ -3,9 +3,11 @@
   (:require
     [clojure.string :as s]
     [hickory.core :as html]
-    [hickory.select :as sel]))
+    [hickory.select :as sel]
+    [hickory.render :as render]))
 
-(defn- wrap-in-div [html] (str "<div>" (s/trim html) "</html>"))
+(defn- wrap-in-div [html]
+  (if html (str "<div>" (s/trim html) "</div>") "<div></div>"))
 
 (defn- parts-for
   "
@@ -24,8 +26,8 @@
                       (sel/attr :data-found #(= % "true"))))
                   container)]
     (map #(hash-map :user-id (-> % :attrs :data-user-id)
-                    :mention mention
-                    :parent container) mention)))
+                    :mention %
+                    :parent (render/hickory-to-html container)) mention)))
 
 (defn- extract-parents
   "Extract all parent div and p elements that contain a mention span."
