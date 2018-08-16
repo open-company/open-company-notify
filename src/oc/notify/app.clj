@@ -64,7 +64,8 @@
         error (if (:test-error msg-body) (/ 1 0) false) ; a message testing Sentry error reporting
         change-type (keyword (:notification-type msg-body))
         resource-type (keyword (:resource-type msg-body))
-        board-id (-> msg-body :board :uuid)
+        board-id (or (-> msg-body :board :uuid)
+                     (-> msg-body :board-uuid))
         item-id (or (-> msg-body :content :new :uuid) ; new or update
                     (-> msg-body :content :old :uuid)) ; delete
         change-at (or (-> msg-body :content :new :updated-at) ; add / update
@@ -73,10 +74,11 @@
                    (= "draft" (or (-> msg-body :content :new :status)
                               (and (= change-type "delete") (-> msg-body :content :old :status)))))
         author (lib-schema/author-for-user (-> msg-body :user))
+        author-id (:user-id author)
         user-id (:user-id author)
         comment? (= resource-type :comment)
         entry? (= resource-type :entry)]
-    (timbre/trace "Received message from SQS:" msg-body)
+    (timbre/info "Received message from SQS:" msg-body)
     (if (and
           (not draft?)
           (or (= change-type :add) (= change-type :update))
@@ -93,27 +95,11 @@
           (when (not-empty new-mentions)
             (timbre/info "Requesting persistence for" (count new-mentions) "mention(s).")
             (doseq [mention new-mentions]
-              (let [notification (notification/->Notification mention board-id item-id change-at author)]
-                (timbre/trace "Storing notification:" notification)
-                (notification/store! notification))))))
-            ; (>!! persistence/persistence-chan (merge msg-body {:change true
-            ;                                                    :change-type change-type
-            ;                                                    :change-at change-at
-            ;                                                    :container-id container-id
-            ;                                                    :resource-type resource-type
-            ;                                                    :item-id item-id
-            ;                                                    :author-id user-id
-            ;                                                    :mention mention}))
-        
-  ;       (timbre/info "Alerting watcher of add/update/delete msg from SQS.")
-  ;       (>!! watcher/watcher-chan {:send true
-  ;                                  :watch-id container-id
-  ;                                  :event (if (= resource-type :entry) :item/change :container/change)
-  ;                                  :payload {:container-id container-id
-  ;                                            :change-type change-type
-  ;                                            :item-id item-id
-  ;                                            :user-id user-id
-  ;                                            :change-at change-at}}))
+              (if (= (:user-id mention) author-id)
+                (timbre/info "Skipping notification creation for self-mention.")
+                (let [notification (notification/->Notification mention board-id item-id change-at author)]
+                  (>!! persistence/persistence-chan {:notify true
+                                                     :notification notification})))))))
       
       ;; Org, board, draft or unknown
       (cond

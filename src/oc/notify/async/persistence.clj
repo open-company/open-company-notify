@@ -44,17 +44,15 @@
   ;; Persist that a user was notified with the specified notification
   (let [notification (:notification message)
         user-id (:user-id notification)
-        notify-at (:notify-at message)]
-    (timbre/info "Notify request for user:" user-id "at:" notify-at)
+        notify-at (:notify-at notification)]
+    (timbre/info "Storing notification for user:" user-id "at:" notify-at)
     ;; upsert a notification
     (notification/store! notification)
-      
-    ;; recurse after upserting the message so it seems the client asked for notifications...
-    ;; in this way the client will receive an updated user/notifications message for this user
-    (handle-persistence-message (-> message
-                                  (dissoc :notify)
-                                  (assoc :notifications true)
-                                  (assoc :user-id user-id)))))
+    ;; notify any watching client of the notification
+    (>!! watcher/watcher-chan {:send true
+                               :watch-id user-id
+                               :event :user/notification
+                               :payload notification})))
 
   ([message]
   (timbre/warn "Unknown request in persistence channel" message)))

@@ -79,7 +79,12 @@
   (let [user-id (-> ring-req :params :user-id)
         client-id (-> ring-req :params :client-id)]
     (timbre/debug "[websocket] chsk/uidport-open by:" user-id "/" client-id)
-    (>!! persistence/persistence-chan {:notifications true :user-id user-id :client-id client-id})))
+    ;; Request a read of existing notifications
+    (>!! persistence/persistence-chan {:notifications true :user-id user-id :client-id client-id})
+    ;; User watches their own ID so they'll get notified of new notificatians
+    (>!! watcher/watcher-chan {:watch true
+                               :watch-id user-id
+                               :client-id client-id})))
 
 (defmethod -event-msg-handler
   ;; Client disconnected
