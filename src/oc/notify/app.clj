@@ -64,10 +64,13 @@
         error (if (:test-error msg-body) (/ 1 0) false) ; a message testing Sentry error reporting
         change-type (keyword (:notification-type msg-body))
         resource-type (keyword (:resource-type msg-body))
+        comment? (= resource-type "comment")
         board-id (or (-> msg-body :board :uuid)
                      (-> msg-body :board-uuid))
-        item-id (or (-> msg-body :content :new :uuid) ; new or update
-                    (-> msg-body :content :old :uuid)) ; delete
+        entry-key (if comment? :resource-uuid :uuid)
+        entry-id (or (-> msg-body :content :new entry-key) ; new or update
+                     (-> msg-body :content :old entry-key)) ; delete
+        interaction-id (-> msg-body :content :new :uuid)
         change-at (or (-> msg-body :content :new :updated-at) ; add / update
                       (:notification-at msg-body)) ; delete
         draft? (or (= board-id draft-board-uuid)
@@ -97,7 +100,10 @@
             (doseq [mention new-mentions]
               (if (= (:user-id mention) author-id)
                 (timbre/info "Skipping notification creation for self-mention.")
-                (let [notification (notification/->Notification mention board-id item-id change-at author)]
+                (let [notification (if comment?
+                                      (notification/->Notification mention board-id entry-id interaction-id
+                                                                   change-at author)
+                                      (notification/->Notification mention board-id entry-id change-at author))]
                   (>!! persistence/persistence-chan {:notify true
                                                      :notification notification})))))))
       
