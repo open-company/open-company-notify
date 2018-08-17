@@ -64,13 +64,14 @@
         error (if (:test-error msg-body) (/ 1 0) false) ; a message testing Sentry error reporting
         change-type (keyword (:notification-type msg-body))
         resource-type (keyword (:resource-type msg-body))
-        comment? (= resource-type "comment")
+        entry? (= resource-type :entry)
+        comment? (= resource-type :comment)
         board-id (or (-> msg-body :board :uuid)
                      (-> msg-body :board-uuid))
         entry-key (if comment? :resource-uuid :uuid)
         entry-id (or (-> msg-body :content :new entry-key) ; new or update
                      (-> msg-body :content :old entry-key)) ; delete
-        interaction-id (-> msg-body :content :new :uuid)
+        interaction-id (when comment? (-> msg-body :content :new :uuid))
         change-at (or (-> msg-body :content :new :updated-at) ; add / update
                       (:notification-at msg-body)) ; delete
         draft? (or (= board-id draft-board-uuid)
@@ -78,9 +79,7 @@
                               (and (= change-type "delete") (-> msg-body :content :old :status)))))
         author (lib-schema/author-for-user (-> msg-body :user))
         author-id (:user-id author)
-        user-id (:user-id author)
-        comment? (= resource-type :comment)
-        entry? (= resource-type :entry)]
+        user-id (:user-id author)]
     (timbre/info "Received message from SQS:" msg-body)
     (if (and
           (not draft?)
@@ -98,7 +97,7 @@
           (when (not-empty new-mentions)
             (timbre/info "Requesting persistence for" (count new-mentions) "mention(s).")
             (doseq [mention new-mentions]
-              (if (= (:user-id mention) author-id)
+              (if (= (:user-id mention) author-id) ; check for a self-mention
                 (timbre/info "Skipping notification creation for self-mention.")
                 (let [notification (if comment?
                                       (notification/->Notification mention board-id entry-id interaction-id
