@@ -63,6 +63,9 @@
         msg-body (clojure.walk/keywordize-keys (json/parse-string (:Message body)))
         error (if (:test-error msg-body) (/ 1 0) false) ; a message testing Sentry error reporting
         change-type (keyword (:notification-type msg-body))
+        add? (= change-type :add)
+        update? (= change-type :update)
+        delete? (= change-type :delete)
         resource-type (keyword (:resource-type msg-body))
         entry? (= resource-type :entry)
         comment? (= resource-type :comment)
@@ -76,49 +79,62 @@
                       (:notification-at msg-body)) ; delete
         draft? (or (= board-id draft-board-uuid)
                    (= "draft" (or (-> msg-body :content :new :status)
-                              (and (= change-type "delete") (-> msg-body :content :old :status)))))
+                              (and delete? (-> msg-body :content :old :status)))))
         author (lib-schema/author-for-user (-> msg-body :user))
         author-id (:user-id author)
         user-id (:user-id author)]
-    (timbre/info "Received message from SQS:" msg-body)
-    (if (and
-          (not draft?)
-          (or (= change-type :add) (= change-type :update))
-          (or entry? comment?))
+    
+    (timbre/trace "Received message from SQS:" msg-body)
+    
+    ;; On an add/update of entry/comment, look for new mentions
+    (when (and
+            (not draft?)
+            (or add? update?)
+            (or entry? comment?))
       
-      ;; Add/update of entry/comment
-      (do
-        (timbre/info "Processing change for mentions...")
-        (let [new-body (-> msg-body :content :new :body)
-              old-body (-> msg-body :content :old :body)
-              mentions (mention/mention-parents new-body)
-              prior-mentions (mention/mention-parents old-body)
-              new-mentions (mention/new-mentions prior-mentions mentions)]
-          (when (not-empty new-mentions)
-            (timbre/info "Requesting persistence for" (count new-mentions) "mention(s).")
-            (doseq [mention new-mentions]
-              (if (= (:user-id mention) author-id) ; check for a self-mention
-                (timbre/info "Skipping notification creation for self-mention.")
-                (let [notification (if comment?
-                                      (notification/->Notification mention board-id entry-id interaction-id
-                                                                   change-at author)
-                                      (notification/->Notification mention board-id entry-id change-at author))]
-                  (>!! persistence/persistence-chan {:notify true
-                                                     :notification notification})))))))
-      
-      ;; Org, board, draft or unknown
-      (cond
-        (= resource-type :org)
-        (timbre/trace "Unhandled org message from SQS:" change-type resource-type)
- 
-        (= resource-type :board)
-        (timbre/trace "Unhandled board message from SQS:" change-type resource-type)
- 
-        draft?
-        (timbre/trace "Skipping draft message from SQS:" change-type resource-type)
+      (timbre/info "Processing change for mentions...")
+      (let [new-body (-> msg-body :content :new :body)
+            old-body (-> msg-body :content :old :body)
+            mentions (mention/mention-parents new-body)
+            prior-mentions (mention/mention-parents old-body)
+            new-mentions (mention/new-mentions prior-mentions mentions)]
 
-        :else
-        (timbre/warn "Unknown message from SQS:" change-type resource-type))))
+        ;; If there are new mentions, we need to persist them
+        (when (not-empty new-mentions)
+          (timbre/info "Requesting persistence for" (count new-mentions) "mention(s).")
+          (doseq [mention new-mentions]
+            (if (= (:user-id mention) author-id) ; check for a self-mention
+              (timbre/info "Skipping notification creation for self-mention.")
+              (let [notification (if comment?
+                                    (notification/->Notification mention board-id entry-id interaction-id
+                                                                 change-at author)
+                                    (notification/->Notification mention board-id entry-id change-at author))]
+                (>!! persistence/persistence-chan {:notify true
+                                                   :notification notification})))))))
+
+      ;; On an add of a comment, notify the post author
+    (when (and comment? add?)
+      (timbre/info "New comment on a post:" msg-body))
+      ; (>!! user/user-chan {:comment true
+      ;                      :author-id author-id
+      ;                      :notification notification})
+
+    ;; Draft, org, board, or unknown
+    (cond
+      draft?
+      (timbre/trace "Skipping draft message from SQS:" change-type resource-type)
+
+      (or comment? entry?)
+      true ; already handled
+
+      (= resource-type :org)
+      (timbre/trace "Unhandled org message from SQS:" change-type resource-type)
+
+      (= resource-type :board)
+      (timbre/trace "Unhandled board message from SQS:" change-type resource-type)
+
+      :else
+      (timbre/warn "Unknown message from SQS:" change-type resource-type)))
 
   (sqs/ack done-channel msg))
 
@@ -136,6 +152,8 @@
 (defn echo-config [port]
   (println (str "\n"
     "Running on port: " port "\n"
+    "Database: " c/db-name "\n"
+    "Database pool: " c/db-pool-size "\n"
     "Dynamo DB: " c/dynamodb-end-point "\n"
     "Table prefix: " c/dynamodb-table-prefix "\n"
     "Notification TTL: " c/notification-ttl " days\n"

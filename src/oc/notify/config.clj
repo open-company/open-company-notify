@@ -23,6 +23,16 @@
 
 (defonce log-level (or (env :log-level) :info))
 
+;; ----- RethinkDB -----
+
+(defonce db-host (or (env :db-host) "localhost"))
+(defonce db-port (or (env :db-port) 28015))
+(defonce db-name (or (env :db-name) "open_company_auth"))
+(defonce db-pool-size (or (env :db-pool-size) (- core-async-limit 21))) ; conservative with the core.async limit
+
+(defonce db-map {:host db-host :port db-port :db db-name})
+(defonce db-options (flatten (vec db-map))) ; k/v sequence as clj-rethinkdb wants it
+
 ;; ----- DynamoDB -----
 
 (defonce migrations-dir "./src/oc/notify/db/migrations")
@@ -54,4 +64,4 @@
 
 ;; ----- Notify Service -----
 
-(defonce notification-ttl (or (env :oc-notification-ttl) 120)) ; days
+(defonce notification-ttl (or (env :oc-notification-ttl) 30)) ; days

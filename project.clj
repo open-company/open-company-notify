@@ -47,6 +47,7 @@
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
     ;; defun - Erlang-esque pattern matching for Clojure functions https://github.com/killme2008/defun
     ;; Component - Component Lifecycle https://github.com/stuartsierra/component
+    ;; RethinkDB - RethinkDB client for Clojure https://github.com/apa512/clj-rethinkdb
     ;; Schema - Data validation https://github.com/Prismatic/schema
     ;; Timbre - Pure Clojure/Script logging library https://github.com/ptaoussanis/timbre
     ;; Amazonica - A comprehensive Clojure client for the AWS API https://github.com/mcohen01/amazonica
@@ -72,7 +73,9 @@
     ;; QA environment and dependencies
     :qa {
       :env {
+        :db-name "open_company_auth_qa"
         :hot-reload "false"
+        :open-company-auth-passphrase "this_is_a_qa_secret" ; JWT secret
       }
       :dependencies [
         ;; Example-based testing https://github.com/marick/Midje
@@ -99,6 +102,8 @@
     ;; Dev environment and dependencies
     :dev [:qa {
       :env ^:replace {
+        :db-name "open_company_auth_dev"
+        :hot-reload "true"
         :log-level "debug"
         :aws-access-key-id "CHANGE-ME"
         :aws-secret-access-key "CHANGE-ME"
@@ -138,6 +143,7 @@
                  '[clj-time.core :as t]
                  '[clj-time.format :as f]
                  '[clojure.string :as s]
+                 '[rethinkdb.query :as r]
                  '[cheshire.core :as json]
                  '[taoensso.faraday :as far]
                  '[oc.lib.jwt :as jwt]
@@ -153,6 +159,8 @@
     :prod {
       :env {
         :env "production"
+        :db-name "open_company_auth"
+        :hot-reload "false"
       }
     }
   }
