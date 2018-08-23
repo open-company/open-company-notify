@@ -272,6 +272,8 @@ Please note that this project is released with a [Contributor Code of Conduct](h
 
 ## License
 
-Distributed under the [Mozilla Public License v2.0](http://www.mozilla.org/MPL/2.0/).
-
 Copyright © 2018 OpenCompany, LLC.
+
+Distributed under the [Mozilla Public License v2.0](http://www.mozilla.org/MPL/2.0/) with the [Commons Clause](https://commonsclause.com/).
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [Commons Clause](https://commonsclause.com/) and the [Mozilla Public License v2.0](http://www.mozilla.org/MPL/2.0/) for more details.
