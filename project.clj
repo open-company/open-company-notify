@@ -2,8 +2,8 @@
   :description "OpenCompany Notify Service"
   :url "https://github.com/open-company/open-company-notify"
   :license {
-    :name "Mozilla Public License v2.0"
-    :url "http://www.mozilla.org/MPL/2.0/"
+    :name "Mozilla Public License v2.0 with the Common Clause"
+    :url "https://github.com/open-company/open-company-notify/blob/mainline/LICENSE"
   }
 
   :min-lein-version "2.7.1"
