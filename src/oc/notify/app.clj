@@ -81,6 +81,7 @@
                    (= "draft" (or (-> msg-body :content :new :status)
                               (and delete? (-> msg-body :content :old :status)))))
         author (lib-schema/author-for-user (-> msg-body :user))
+        new-body (-> msg-body :content :new :body)
         author-id (:user-id author)
         user-id (:user-id author)]
     
@@ -93,8 +94,7 @@
             (or entry? comment?))
       
       (timbre/info "Processing change for mentions...")
-      (let [new-body (-> msg-body :content :new :body)
-            old-body (-> msg-body :content :old :body)
+      (let [old-body (-> msg-body :content :old :body)
             mentions (mention/mention-parents new-body)
             prior-mentions (mention/mention-parents old-body)
             new-mentions (mention/new-mentions prior-mentions mentions)]
@@ -112,12 +112,14 @@
                 (>!! persistence/persistence-chan {:notify true
                                                    :notification notification})))))))
 
-      ;; On an add of a comment, notify the post author
+    ;; On an add of a comment, notify the post author
     (when (and comment? add?)
-      (timbre/info "New comment on a post:" msg-body))
-      ; (>!! user/user-chan {:comment true
-      ;                      :author-id author-id
-      ;                      :notification notification})
+      (timbre/info "Proccessing comment on a post...")
+      (let [publisher (:entry-publisher msg-body)
+            notification (notification/->Notification publisher new-body board-id entry-id
+                                                      interaction-id change-at author)]
+        (>!! persistence/persistence-chan {:notify true
+                                           :notification notification})))
 
     ;; Draft, org, board, or unknown
     (cond

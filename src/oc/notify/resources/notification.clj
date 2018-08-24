@@ -32,9 +32,8 @@
 ;; ----- Constructor -----
 
 (schema/defn ^:always-validate ->Notification :- Notification
-  ([mention board-id entry-id interaction-id :- lib-schema/UniqueID change-at author]
-  (assoc (->Notification mention board-id entry-id change-at author) :interaction-id interaction-id))
-
+  
+  ;; arity 5: a mention in a post
   ([mention :- Mention
    board-id :- lib-schema/UniqueID
    entry-id :- lib-schema/UniqueID
@@ -46,7 +45,29 @@
     :notify-at change-at
     :content (:parent mention)
     :mention true
+    :author author})
+
+  ;; arity 6: a mention in a comment
+  ([mention board-id entry-id interaction-id :- lib-schema/UniqueID change-at author]
+  (assoc (->Notification mention board-id entry-id change-at author) :interaction-id interaction-id))
+
+  ;; arity 7: a comment on a post
+  ([entry-publisher :- lib-schema/Author
+   comment-body :- schema/Str
+   board-id :- lib-schema/UniqueID
+   entry-id :- lib-schema/UniqueID
+   interaction-id :- lib-schema/UniqueID
+   change-at :- lib-schema/ISO8601
+   author :- lib-schema/Author]
+   {:user-id (:user-id entry-publisher)
+    :board-id board-id
+    :entry-id entry-id
+    :notify-at change-at
+    :content comment-body
+    :mention false
     :author author}))
+
+
 
 ;; ----- DB Operations -----
 
