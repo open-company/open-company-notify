@@ -8,6 +8,7 @@
             [defun.core :refer (defun-)]
             [taoensso.timbre :as timbre]
             [oc.lib.async.watcher :as watcher]
+            [oc.notify.async.user :as user]
             [oc.notify.resources.notification :as notification]))
 
 ;; ----- core.async -----
@@ -52,7 +53,11 @@
     (>!! watcher/watcher-chan {:send true
                                :watch-id user-id
                                :event :user/notification
-                               :payload notification})))
+                               :payload notification})
+    ;; lookup the notified user to see if they need notified out-of-app
+    (>!! user/user-chan {:notify true
+                         :notification notification
+                         :user-id user-id})))
 
   ([message]
   (timbre/warn "Unknown request in persistence channel" message)))
