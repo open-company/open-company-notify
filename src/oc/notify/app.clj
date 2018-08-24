@@ -118,8 +118,10 @@
       (let [publisher (:entry-publisher msg-body)
             notification (notification/->Notification publisher new-body board-id entry-id
                                                       interaction-id change-at author)]
-        (>!! persistence/persistence-chan {:notify true
-                                           :notification notification})))
+        (if (= (:user-id publisher) author-id) ; check for a self-comment
+          (timbre/info "Skipping notification creation for self-comment.")
+          (>!! persistence/persistence-chan {:notify true
+                                             :notification notification}))))
 
     ;; Draft, org, board, or unknown
     (cond
