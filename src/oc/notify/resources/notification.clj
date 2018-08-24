@@ -62,6 +62,7 @@
    {:user-id (:user-id entry-publisher)
     :board-id board-id
     :entry-id entry-id
+    :interaction-id interaction-id
     :notify-at change-at
     :content comment-body
     :mention false
