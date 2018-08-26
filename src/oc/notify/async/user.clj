@@ -5,11 +5,11 @@
   Use of this is through core/async. A message is sent to the `user-chan`.
   "
   (:require [clojure.core.async :as async :refer (>!! <!)]
-            [if-let.core :refer (if-let*)]
             [defun.core :refer (defun-)]
             [taoensso.timbre :as timbre]
             [oc.lib.db.pool :as pool]
-            [oc.lib.db.common :as db-common]))
+            [oc.lib.db.common :as db-common]
+            [oc.notify.async.email :as email]))
 
 ;; ----- core.async -----
 
@@ -29,10 +29,15 @@
 
   ([db-pool message :guard :notify]
   (pool/with-pool [conn db-pool]
-    (if-let* [user-id (:user-id message)
-              notification (:notification message)
-              notify-user (db-common/read-resource conn "users" user-id)]
-      (timbre/info "Handle user message for:" user-id))))
+    (let [user-id (:user-id message)
+          notification (:notification message)]
+      (timbre/info "Handle user message for:" user-id)
+      (if-let [notify-user (db-common/read-resource conn "users" user-id)]
+        (case (:digest-medium notify-user)
+          ;"slack" (bot/send-trigger! (bot/->trigger notification notify-user))
+          "email" (email/send-trigger! (email/->trigger notification notify-user))
+          :else (timbre/info "Skipping out-of-app notification for user:" user-id))
+        (timbre/warn "Notification for non-existent user:" user-id)))))
 
   ([_db-pool message]
   (timbre/warn "Unknown request in user channel" message)))
@@ -45,7 +50,7 @@
   (async/go (while @user-go
     (timbre/debug "User waiting...")
     (let [message (<! user-chan)]
-      (timbre/debug "User message on uner channel...")
+      (timbre/debug "User message on user channel...")
       (if (:stop message)
         (do (reset! user-go false) (timbre/info "User stopped."))
         (async/thread
