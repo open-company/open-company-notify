@@ -115,7 +115,7 @@
     ;; On an add of a comment, notify the post author
     (when (and comment? add?)
       (timbre/info "Proccessing comment on a post...")
-      (let [publisher (:entry-publisher msg-body)
+      (let [publisher (:item-publisher msg-body)
             notification (notification/->Notification publisher new-body board-id entry-id
                                                       interaction-id change-at author)]
         (if (= (:user-id publisher) author-id) ; check for a self-comment
