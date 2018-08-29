@@ -21,6 +21,7 @@
 
 (def Notification {
   :user-id lib-schema/UniqueID
+  :org-id lib-schema/UniqueID
   :board-id lib-schema/UniqueID
   :entry-id lib-schema/UniqueID
   (schema/optional-key :interaction-id) lib-schema/UniqueID
@@ -33,13 +34,15 @@
 
 (schema/defn ^:always-validate ->Notification :- Notification
   
-  ;; arity 5: a mention in a post
+  ;; arity 6: a mention in a post
   ([mention :- Mention
+   org-id :- lib-schema/UniqueID
    board-id :- lib-schema/UniqueID
    entry-id :- lib-schema/UniqueID
    change-at :- lib-schema/ISO8601
    author :- lib-schema/Author]
    {:user-id (:user-id mention)
+    :org-id org-id
     :board-id board-id
     :entry-id entry-id
     :notify-at change-at
@@ -47,19 +50,21 @@
     :mention true
     :author author})
 
-  ;; arity 6: a mention in a comment
-  ([mention board-id entry-id interaction-id :- lib-schema/UniqueID change-at author]
-  (assoc (->Notification mention board-id entry-id change-at author) :interaction-id interaction-id))
+  ;; arity 7: a mention in a comment
+  ([mention org-id board-id entry-id interaction-id :- lib-schema/UniqueID change-at author]
+  (assoc (->Notification mention org-id board-id entry-id change-at author) :interaction-id interaction-id))
 
-  ;; arity 7: a comment on a post
+  ;; arity 8: a comment on a post
   ([entry-publisher :- lib-schema/Author
    comment-body :- schema/Str
+   org-id :- lib-schema/UniqueID
    board-id :- lib-schema/UniqueID
    entry-id :- lib-schema/UniqueID
    interaction-id :- lib-schema/UniqueID
    change-at :- lib-schema/ISO8601
    author :- lib-schema/Author]
    {:user-id (:user-id entry-publisher)
+    :org-id org-id
     :board-id board-id
     :entry-id entry-id
     :interaction-id interaction-id
@@ -95,6 +100,26 @@
         :interaction_id :interaction-id
         :notify_at :notify-at}))
       (map #(dissoc % :ttl))))
+
+(defn create-table
+  ([] (create-table c/dynamodb-opts))
+  
+  ([dynamodb-opts]
+  (far/ensure-table dynamodb-opts table-name
+    [:user_id :s]
+    {:range-keydef [:notify_at :s]
+     :throughput {:read 1 :write 1}
+     :block? true})))
+
+(defn delete-table
+  ([] (delete-table c/dynamodb-opts))
+  
+  ([dynamodb-opts]
+  (far/delete-table dynamodb-opts table-name)))
+
+(defn delete-all! []
+  (delete-table)
+  (create-table))
 
 (comment
 

@@ -30,12 +30,13 @@
   ([db-pool message :guard :notify]
   (pool/with-pool [conn db-pool]
     (let [user-id (:user-id message)
-          notification (:notification message)]
+          notification (:notification message)
+          org (:org message)]
       (timbre/info "Handle user message for:" user-id)
       (if-let [notify-user (db-common/read-resource conn "users" user-id)]
         (case (:digest-medium notify-user)
           ;"slack" (bot/send-trigger! (bot/->trigger notification notify-user))
-          "email" (email/send-trigger! (email/->trigger notification notify-user))
+          "email" (email/send-trigger! (email/->trigger notification org notify-user))
           :else (timbre/info "Skipping out-of-app notification for user:" user-id))
         (timbre/warn "Notification for non-existent user:" user-id)))))
 

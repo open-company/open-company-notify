@@ -69,6 +69,8 @@
         resource-type (keyword (:resource-type msg-body))
         entry? (= resource-type :entry)
         comment? (= resource-type :comment)
+        org (:org msg-body)
+        org-id (:uuid org)
         board-id (or (-> msg-body :board :uuid)
                      (-> msg-body :board-uuid))
         entry-key (if comment? :resource-uuid :uuid)
@@ -86,7 +88,6 @@
         user-id (:user-id author)]
     
     (timbre/trace "Received message from SQS:" msg-body)
-    
     ;; On an add/update of entry/comment, look for new mentions
     (when (and
             (not draft?)
@@ -106,21 +107,23 @@
             (if (= (:user-id mention) author-id) ; check for a self-mention
               (timbre/info "Skipping notification creation for self-mention.")
               (let [notification (if comment?
-                                    (notification/->Notification mention board-id entry-id interaction-id
+                                    (notification/->Notification mention org-id board-id entry-id interaction-id
                                                                  change-at author)
-                                    (notification/->Notification mention board-id entry-id change-at author))]
+                                    (notification/->Notification mention org-id board-id entry-id change-at author))]
                 (>!! persistence/persistence-chan {:notify true
+                                                   :org org
                                                    :notification notification})))))))
 
     ;; On an add of a comment, notify the post author
     (when (and comment? add?)
       (timbre/info "Proccessing comment on a post...")
       (let [publisher (:item-publisher msg-body)
-            notification (notification/->Notification publisher new-body board-id entry-id
+            notification (notification/->Notification publisher new-body org-id board-id entry-id
                                                       interaction-id change-at author)]
         (if (= (:user-id publisher) author-id) ; check for a self-comment
           (timbre/info "Skipping notification creation for self-comment.")
           (>!! persistence/persistence-chan {:notify true
+                                             :org org
                                              :notification notification}))))
 
     ;; Draft, org, board, or unknown

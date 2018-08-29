@@ -5,16 +5,10 @@
             [oc.notify.resources.notification :as notification]))
 
 ;; NB: The fact that these migrations have been run already does not currently persist, so the up method
-;; need to be idempotent
+;; needs to be idempotent
 (defn up [dynamodb-opts]
 
   ;; Create new table if needed
-  (println
-    (far/ensure-table dynamodb-opts
-      notification/table-name
-      [:user_id :s]
-      {:range-keydef [:notify_at :s]
-       :throughput {:read 1 :write 1}
-       :block? true}))
+  (println (notification/create-table dynamodb-opts))
 
   true) ; return true on success

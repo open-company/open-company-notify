@@ -15,14 +15,16 @@
    (schema/optional-key :first-name) schema/Str
    (schema/optional-key :name) schema/Str
    (schema/optional-key :timezone) schema/Str
+   :org {schema/Any schema/Any}
    :status schema/Str
    :notification notification/Notification})
 
-(defn ->trigger [notification user]
+(defn ->trigger [notification org user]
   (merge {
     :type "notify"
     :to (:email user)
-    :notification notification}
+    :notification notification
+    :org (dissoc org :author :authors :viewers :created-at :updated-at :promoted)}
     (select-keys user [:user-id :last-name :first-name :name :timezone :status])))
 
 (defn send-trigger! [trigger]
