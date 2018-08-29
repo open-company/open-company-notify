@@ -48,13 +48,16 @@
   Handle an incoming SQS message from storage to the notify service.
 
   {
-    :notification-type 'add|update|delete',
-    :notification-at ISO8601,
+    :notification-type 'add|update|delete'
+    :notification-at ISO8601
     :resource-type 'entry|comment'
-    :user {...},
-    :org {...},
-    :board {...},
-    :content {:new {...},
+    :uuid UUID
+    :resource-uuid UUID
+    :secure-uuid UUID
+    :user {...}
+    :org {...}
+    :board {...}
+    :content {:new {...}
               :old {...}}
   }
   "
@@ -76,6 +79,9 @@
         entry-key (if comment? :resource-uuid :uuid)
         entry-id (or (-> msg-body :content :new entry-key) ; new or update
                      (-> msg-body :content :old entry-key)) ; delete
+        secure-uuid (or (:secure-uuid msg-body) ; interaction
+                        (or (-> msg-body :content :new :secure-uuid) ; post new or update
+                            (-> msg-body :content :old :secure-uuid))) ; post delete
         interaction-id (when comment? (-> msg-body :content :new :uuid))
         change-at (or (-> msg-body :content :new :updated-at) ; add / update
                       (:notification-at msg-body)) ; delete
@@ -87,7 +93,7 @@
         author-id (:user-id author)
         user-id (:user-id author)]
     
-    (timbre/trace "Received message from SQS:" msg-body)
+    (timbre/info "Received message from SQS:" msg-body)
     ;; On an add/update of entry/comment, look for new mentions
     (when (and
             (not draft?)
