@@ -14,16 +14,16 @@
   ;; All profile dependencies
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
-    [org.clojure/clojure "1.10.0-alpha6"]
+    [org.clojure/clojure "1.10.0-alpha8"]
     ;; Command-line parsing https://github.com/clojure/tools.cli
-    [org.clojure/tools.cli "0.3.7"] 
+    [org.clojure/tools.cli "0.4.0"] 
     ;; Web application library https://github.com/ring-clojure/ring
-    [ring/ring-devel "1.7.0-RC1"]
+    [ring/ring-devel "1.7.0"]
     ;; Web application library https://github.com/ring-clojure/ring
     ;; NB: clj-time pulled in by oc.lib
     ;; NB: joda-time pulled in by oc.lib via clj-time
     ;; NB: commons-codec pulled in by oc.lib
-    [ring/ring-core "1.7.0-RC1" :exclusions [clj-time joda-time commons-codec]]
+    [ring/ring-core "1.7.0" :exclusions [clj-time joda-time commons-codec]]
     ;; CORS library https://github.com/jumblerg/ring.middleware.cors
     [jumblerg/ring.middleware.cors "1.0.1"]
     ;; Ring logging https://github.com/nberger/ring-logger-timbre
@@ -41,7 +41,7 @@
     [org.apache.httpcomponents/httpclient "4.5.6"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.16.13"]
+    [open-company/lib "0.16.14"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
@@ -83,7 +83,7 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.2" :exclusions [joda-time org.clojure/tools.macro clj-time commons-codec]] 
+        [midje "1.9.3-alpha1" :exclusions [joda-time org.clojure/tools.macro clj-time commons-codec]] 
         ;; Clojure WebSocket client https://github.com/cch1/http.async.client
         [http.async.client "1.3.0"]
         ;; Test Ring requests https://github.com/weavejester/ring-mock
@@ -115,8 +115,6 @@
         ;; Check for code smells https://github.com/dakrone/lein-bikeshed
         ;; NB: org.clojure/tools.cli is pulled in by lein-kibit
         [lein-bikeshed "0.5.1" :exclusions [org.clojure/tools.cli]] 
-        ;; Plugin for finding dead code (be thoughtful, lots of false positives) https://github.com/venantius/yagni
-        [venantius/yagni "0.1.4"]
         ;; Runs bikeshed, kibit and eastwood https://github.com/itang/lein-checkall
         [lein-checkall "0.1.1"]
         ;; pretty-print the lein project map https://github.com/technomancy/leiningen/tree/master/lein-pprint
@@ -125,8 +123,8 @@
         [lein-ancient "0.6.15"]
         ;; Catch spelling mistakes in docs and docstrings https://github.com/cldwalker/lein-spell
         [lein-spell "0.1.0"]
-        ;; Dead code finder https://github.com/venantius/yagni
-        [venantius/yagni "0.1.4" :exclusions [org.clojure/clojure]]
+        ;; Plugin for finding dead code (be thoughtful, lots of false positives) https://github.com/venantius/yagni
+        [venantius/yagni "0.1.6" :exclusions [org.clojure/clojure]]
       ]  
     }]
     :repl-config [:dev {
