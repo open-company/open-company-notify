@@ -113,9 +113,9 @@
             (if (= (:user-id mention) author-id) ; check for a self-mention
               (timbre/info "Skipping notification creation for self-mention.")
               (let [notification (if comment?
-                                    (notification/->Notification mention org-id board-id entry-id interaction-id
+                                    (notification/->Notification mention org-id board-id entry-id secure-uuid interaction-id
                                                                  change-at author)
-                                    (notification/->Notification mention org-id board-id entry-id change-at author))]
+                                    (notification/->Notification mention org-id board-id entry-id secure-uuid change-at author))]
                 (>!! persistence/persistence-chan {:notify true
                                                    :org org
                                                    :notification notification})))))))
@@ -124,7 +124,7 @@
     (when (and comment? add?)
       (timbre/info "Proccessing comment on a post...")
       (let [publisher (:item-publisher msg-body)
-            notification (notification/->Notification publisher new-body org-id board-id entry-id
+            notification (notification/->Notification publisher new-body org-id board-id entry-id secure-uuid
                                                       interaction-id change-at author)]
         (if (= (:user-id publisher) author-id) ; check for a self-comment
           (timbre/info "Skipping notification creation for self-comment.")
