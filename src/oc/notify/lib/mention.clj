@@ -84,11 +84,11 @@
   :parent - the container
   "
   [prior-containers containers]
-  (let [prior-mentions (flatten (map #(parts-for %) prior-containers))
-        mentions (flatten (map #(parts-for %) containers))
+  (let [prior-mentions (flatten (map parts-for prior-containers))
+        mentions (flatten (map parts-for containers))
         ;; multiple mentions of the same user aren't interesting
-        deduped-prior-mentions (zipmap (map #(:user-id %) prior-mentions) prior-mentions) ; de-dupe by user-id
-        deduped-mentions (zipmap (map #(:user-id %) mentions) mentions) ; de-dupe by user-id
+        deduped-prior-mentions (zipmap (map :user-id prior-mentions) prior-mentions) ; de-dupe by user-id
+        deduped-mentions (zipmap (map :user-id mentions) mentions) ; de-dupe by user-id
         ;; only mentions for users that are in the mentions but not in the prior mentions
         new-mentions (filter #(not (get deduped-prior-mentions (:user-id %))) (vals deduped-mentions))]
     (vec new-mentions)))

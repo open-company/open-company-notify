@@ -5,7 +5,6 @@
             [clj-time.core :as time]
             [clj-time.coerce :as coerce]
             [oc.lib.schema :as lib-schema]
-            [oc.lib.time :as oc-time]
             [oc.notify.config :as c]))
 
 ;; ----- DynamoDB -----

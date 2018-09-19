@@ -18,7 +18,6 @@
     [oc.lib.sentry-appender :as sa]
     [oc.lib.schema :as lib-schema]
     [oc.lib.sqs :as sqs]
-    [oc.lib.async.watcher :as watcher]
     [oc.notify.components :as components]
     [oc.notify.config :as c]
     [oc.notify.api.websockets :as websockets-api]
@@ -75,7 +74,7 @@
         org (:org msg-body)
         org-id (:uuid org)
         board-id (or (-> msg-body :board :uuid)
-                     (-> msg-body :board-uuid))
+                     (:board-uuid msg-body))
         entry-key (if comment? :resource-uuid :uuid)
         entry-id (or (-> msg-body :content :new entry-key) ; new or update
                      (-> msg-body :content :old entry-key)) ; delete
@@ -88,7 +87,7 @@
         draft? (or (= board-id draft-board-uuid)
                    (= "draft" (or (-> msg-body :content :new :status)
                               (and delete? (-> msg-body :content :old :status)))))
-        author (lib-schema/author-for-user (-> msg-body :user))
+        author (lib-schema/author-for-user (:user msg-body))
         new-body (-> msg-body :content :new :body)
         author-id (:user-id author)
         user-id (:user-id author)]

@@ -188,9 +188,8 @@
 
   :eastwood {
     ;; Disable some linters that are enabled by default:
-    ;; contant-test - just seems mostly ill-advised, logical constants are useful in something like a `->cond` 
-    ;; suspcious-experession - unfortunate, but it's failing on defrecord of a com.stuartsierra.component component
-    :exclude-linters [:constant-test :suspicious-expression]
+    ;; wrong-arity - unfortunate, but it's failing on 3/arity of sqs/send-message
+    :exclude-linters [:wrong-arity]
 
     ;; Enable some linters that are disabled by default
     :add-linters [:unused-namespaces :unused-private-vars] ; :unused-locals
