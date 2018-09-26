@@ -14,7 +14,7 @@
    (schema/optional-key :last-name) schema/Str
    (schema/optional-key :first-name) schema/Str
    (schema/optional-key :name) schema/Str
-   (schema/optional-key :timezone) schema/Str
+   (schema/optional-key :timezone) (schema/maybe schema/Str)
    :org {schema/Any schema/Any}
    :status schema/Str
    :notification notification/Notification})
