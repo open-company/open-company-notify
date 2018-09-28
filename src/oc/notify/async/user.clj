@@ -9,7 +9,8 @@
             [taoensso.timbre :as timbre]
             [oc.lib.db.pool :as pool]
             [oc.lib.db.common :as db-common]
-            [oc.notify.async.email :as email]))
+            [oc.notify.async.email :as email]
+            [oc.notify.async.bot :as bot]))
 
 ;; ----- core.async -----
 
@@ -35,7 +36,7 @@
       (timbre/info "Handle user message for:" user-id)
       (if-let [notify-user (db-common/read-resource conn "users" user-id)]
         (case (:digest-medium notify-user)
-          ;"slack" (bot/send-trigger! (bot/->trigger notification notify-user))
+          "slack" (bot/send-trigger! (bot/->trigger conn notification org notify-user))
           "email" (email/send-trigger! (email/->trigger notification org notify-user))
           :else (timbre/info "Skipping out-of-app notification for user:" user-id))
         (timbre/warn "Notification for non-existent user:" user-id)))))

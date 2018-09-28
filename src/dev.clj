@@ -1,6 +1,7 @@
 (ns dev
   (:require [com.stuartsierra.component :as component]
             [clojure.tools.namespace.repl :as ctnrepl]
+            [oc.lib.db.pool :as pool]
             [oc.notify.config :as c]
             [oc.notify.app :as app]
             [oc.notify.components :as components]))
@@ -20,6 +21,9 @@
                                                                       :access-key c/aws-access-key-id
                                                                       :secret-key c/aws-secret-access-key}}})))))
 
+(defn bind-conn! []
+  (alter-var-root #'conn (constantly (pool/claim (get-in system [:db-pool :pool])))))
+
 (defn- start⬆ []
   (alter-var-root #'system component/start))
 
@@ -34,8 +38,10 @@
   ([port]
   (init port)
   (start⬆)
+  (bind-conn!)
   (app/echo-config port)
   (println (str "Now serving notifications from the REPL.\n"
+                "A DB connection is available with: conn\n"
                 "When you're ready to stop the system, just type: (stop)\n"))
   port))
 
