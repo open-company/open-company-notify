@@ -5,6 +5,7 @@
             [taoensso.timbre :as timbre]
             [compojure.core :as compojure :refer (defroutes GET POST)]
             [taoensso.sente.server-adapters.http-kit :refer (get-sch-adapter)]
+            [oc.lib.jwt :as jwt]
             [oc.lib.async.watcher :as watcher]
             [oc.notify.config :as c]
             [oc.notify.async.persistence :as persistence]))
@@ -67,18 +68,28 @@
     (?reply-fn {:umatched-event-as-echoed-from-from-server event})))
 
 (defmethod -event-msg-handler
+  :auth/jwt
+
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (let [client-id (-> ring-req :params :client-id)
+        jwt-valid? (jwt/valid? (:jwt ?data) c/passphrase)]
+    (timbre/info "[websocket] auth/jwt" (if jwt-valid? "valid" "invalid") "by" client-id)
+    ;; Get the jwt and disconnect the client if it's not good!
+    (when ?reply-fn
+      (?reply-fn {:valid jwt-valid?}))))
+
+(defmethod -event-msg-handler
   :chsk/ws-ping
   [_]
   (timbre/trace "[websocket] ping"))
 
 (defmethod -event-msg-handler
-  ;; Client connected
-  :chsk/uidport-open
+  :watch/notifications
 
   [{:as ev-msg :keys [event id ring-req]}]
   (let [user-id (-> ring-req :params :user-id)
         client-id (-> ring-req :params :client-id)]
-    (timbre/debug "[websocket] chsk/uidport-open by:" user-id "/" client-id)
+    (timbre/debug "[websocket] watch/notifications by:" user-id "/" client-id)
     ;; Request a read of existing notifications
     (>!! persistence/persistence-chan {:notifications true :user-id user-id :client-id client-id})
     ;; User watches their own ID so they'll get notified of new notificatians
