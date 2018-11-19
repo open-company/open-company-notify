@@ -78,6 +78,7 @@
         entry-key (if comment? :resource-uuid :uuid)
         entry-id (or (-> msg-body :content :new entry-key) ; new or update
                      (-> msg-body :content :old entry-key)) ; delete
+        entry-title (-> msg-body :content :new :headline)
         secure-uuid (or (:secure-uuid msg-body) ; interaction
                         (or (-> msg-body :content :new :secure-uuid) ; post new or update
                             (-> msg-body :content :old :secure-uuid))) ; post delete
@@ -112,9 +113,9 @@
             (if (= (:user-id mention) author-id) ; check for a self-mention
               (timbre/info "Skipping notification creation for self-mention.")
               (let [notification (if comment?
-                                    (notification/->Notification mention org-id board-id entry-id secure-uuid interaction-id
+                                    (notification/->Notification mention org-id board-id entry-id entry-title secure-uuid interaction-id
                                                                  change-at author)
-                                    (notification/->Notification mention org-id board-id entry-id secure-uuid change-at author))]
+                                    (notification/->Notification mention org-id board-id entry-id entry-title secure-uuid change-at author))]
                 (>!! persistence/persistence-chan {:notify true
                                                    :org org
                                                    :notification notification})))))))
@@ -123,7 +124,7 @@
     (when (and comment? add?)
       (timbre/info "Proccessing comment on a post...")
       (let [publisher (:item-publisher msg-body)
-            notification (notification/->Notification publisher new-body org-id board-id entry-id secure-uuid
+            notification (notification/->Notification publisher new-body org-id board-id entry-id entry-title secure-uuid
                                                       interaction-id change-at author)]
         (if (= (:user-id publisher) author-id) ; check for a self-comment
           (timbre/info "Skipping notification creation for self-comment.")
