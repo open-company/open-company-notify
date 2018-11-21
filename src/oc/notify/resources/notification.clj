@@ -23,6 +23,7 @@
   :org-id lib-schema/UniqueID
   :board-id lib-schema/UniqueID
   :entry-id lib-schema/UniqueID
+  (schema/optional-key :entry-title) schema/Str
   :secure-uuid lib-schema/UniqueID
   (schema/optional-key :interaction-id) lib-schema/UniqueID
   :notify-at lib-schema/ISO8601
@@ -39,6 +40,7 @@
    org-id :- lib-schema/UniqueID
    board-id :- lib-schema/UniqueID
    entry-id :- lib-schema/UniqueID
+   entry-title
    secure-uuid :- lib-schema/UniqueID
    change-at :- lib-schema/ISO8601
    author :- lib-schema/Author]
@@ -46,6 +48,7 @@
     :org-id org-id
     :board-id board-id
     :entry-id entry-id
+    :entry-title (if (nil? entry-title) "comment" entry-title)
     :secure-uuid secure-uuid
     :notify-at change-at
     :content (:parent mention)
@@ -53,8 +56,8 @@
     :author author})
 
   ;; arity 8: a mention in a comment
-  ([mention org-id board-id entry-id secure-id interaction-id :- lib-schema/UniqueID change-at author]
-  (assoc (->Notification mention org-id board-id entry-id secure-id change-at author)
+  ([mention org-id board-id entry-id entry-title secure-id interaction-id :- lib-schema/UniqueID change-at author]
+     (assoc (->Notification mention org-id board-id entry-id entry-title secure-id change-at author)
     :interaction-id interaction-id))
 
   ;; arity 9: a comment on a post
@@ -63,6 +66,7 @@
    org-id :- lib-schema/UniqueID
    board-id :- lib-schema/UniqueID
    entry-id :- lib-schema/UniqueID
+   entry-title
    secure-uuid :- lib-schema/UniqueID
    interaction-id :- lib-schema/UniqueID
    change-at :- lib-schema/ISO8601
@@ -71,6 +75,7 @@
     :org-id org-id
     :board-id board-id
     :entry-id entry-id
+    :entry-title (if (nil? entry-title) "comment" entry-title)
     :secure-uuid secure-uuid
     :interaction-id interaction-id
     :notify-at change-at
