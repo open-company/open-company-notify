@@ -3,7 +3,6 @@
   (:require [taoensso.faraday :as far]
             [schema.core :as schema]
             [clj-time.core :as time]
-            [clj-time.coerce :as coerce]
             [oc.lib.schema :as lib-schema]
             [oc.notify.config :as c]
             [oc.lib.dynamo.common :as ttl]))
