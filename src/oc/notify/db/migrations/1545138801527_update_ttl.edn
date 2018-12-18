@@ -1,0 +1,15 @@
+(ns oc.notify.db.migrations.update-ttl
+  (:require [taoensso.faraday :as far]
+            [oc.lib.db.migrations :as m]
+            [oc.notify.config :as config]
+            [oc.notify.resources.notification :as notification]
+            [oc.lib.dynamo.common :as ttl]))
+
+;; NB: The fact that these migrations have been run already does not currently persist, so the up method
+;; needs to be idempotent
+(defn up [dynamodb-opts]
+
+  ;; Add ttl to seen table
+  (ttl/maybe-enable-ttl dynamodb-opts notification/table-name)
+
+  true) ; return true on success
