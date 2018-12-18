@@ -2,7 +2,6 @@
   "Store notification details with a TTL"
   (:require [taoensso.faraday :as far]
             [schema.core :as schema]
-            [clj-time.core :as time]
             [oc.lib.schema :as lib-schema]
             [oc.notify.config :as c]
             [oc.lib.dynamo.common :as ttl]))
