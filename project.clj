@@ -41,7 +41,7 @@
     [org.apache.httpcomponents/httpclient "4.5.6"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.16.19"]
+    [open-company/lib "0.16.31alpha"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
@@ -168,6 +168,7 @@
                       "OpenCompany Notify REPL\n"
                       "\nReady to do your bidding... I suggest (go) or (go <port>) as your first command.\n"))
     :init-ns dev
+    :timeout 120000
   }
 
   :aliases {
