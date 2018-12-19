@@ -29,6 +29,8 @@
     (schema/optional-key :last-name) schema/Str
     (schema/optional-key :first-name) schema/Str
     (schema/optional-key :name) schema/Str
+    (schema/optional-key :avatar-url) (schema/maybe schema/Str)
+    (schema/optional-key :teams) (schema/maybe schema/Any)
     (schema/optional-key :timezone) (schema/maybe schema/Str)
     :org {schema/Any schema/Any}
     :status schema/Str
@@ -50,7 +52,7 @@
       }
       :notification notification
       :org (dissoc org :author :authors :viewers :created-at :updated-at :promoted)}
-      (select-keys user [:user-id :last-name :first-name :name :timezone :status]))))
+      (select-keys user [:user-id :last-name :first-name :name :avatar-url :teams :timezone :status]))))
 
 (defn send-trigger! [trigger]
   (timbre/info "Bot request to queue:" config/aws-sqs-bot-queue)
