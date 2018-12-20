@@ -1,6 +1,7 @@
 (ns oc.notify.db.migrations
   "Lein main to migrate Dynamo data."
   (:require [clojure.string :as s]
+            [clojure.java.io :as java-io]
             [oc.notify.config :as c]
             [oc.lib.db.migrations :as m])
   (:gen-class))
@@ -22,7 +23,7 @@
   ;; Run the migrations
   (println "\nRunning migrations.")
   (run-migrations dynamodb-opts migrations-dir
-    (filter #(s/ends-with? % ".edn") (file-seq (clojure.java.io/file migrations-dir))))
+    (filter #(s/ends-with? % ".edn") (file-seq (java-io/file migrations-dir))))
   (println "Migrations complete.")
   (System/exit 0)) ; gets hung when running Faraday commands in migrations, so force an exit
 
