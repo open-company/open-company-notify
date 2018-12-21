@@ -3,6 +3,8 @@
   (:gen-class)
   (:require
     [clojure.core.async :as async :refer (>!!)]
+    [clojure.walk :as cw]
+    [clojure.java.io :as java-io]
     [raven-clj.core :as sentry]
     [raven-clj.interfaces :as sentry-interfaces]
     [raven-clj.ring :as sentry-mw]
@@ -61,8 +63,8 @@
   }
   "
   [msg done-channel]
-  (let [body (clojure.walk/keywordize-keys (json/parse-string (:body msg)))
-        msg-body (clojure.walk/keywordize-keys (json/parse-string (:Message body)))
+  (let [body (cw/keywordize-keys (json/parse-string (:body msg)))
+        msg-body (cw/keywordize-keys (json/parse-string (:Message body)))
         error (if (:test-error msg-body) (/ 1 0) false) ; a message testing Sentry error reporting
         change-type (keyword (:notification-type msg-body))
         add? (= change-type :add)
@@ -210,7 +212,7 @@
 
   ;; Echo config information
   (println (str "\n"
-    (when c/intro? (str (slurp (clojure.java.io/resource "ascii_art.txt")) "\n"))
+    (when c/intro? (str (slurp (java-io/resource "ascii_art.txt")) "\n"))
     "OpenCompany Notify Service\n"))
   (echo-config port))
 
