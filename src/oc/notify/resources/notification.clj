@@ -103,6 +103,8 @@
 
 (schema/defn ^:always-validate retrieve :- [Notification]
   [user-id :- lib-schema/UniqueID]
+  ;; Filter out TTL records as TTL expiration doesn't happen with local DynamoDB,
+  ;; and on server DynamoDB it can be delayed by up to 48 hours
   (->> (far/query c/dynamodb-opts table-name {:user_id [:eq user-id]}
         {:filter-expr "#k > :v"
          :expr-attr-names {"#k" "ttl"}
