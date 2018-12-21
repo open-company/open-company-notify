@@ -2,10 +2,9 @@
   "Store notification details with a TTL"
   (:require [taoensso.faraday :as far]
             [schema.core :as schema]
-            [clj-time.core :as time]
-            [clj-time.coerce :as coerce]
             [oc.lib.schema :as lib-schema]
-            [oc.notify.config :as c]))
+            [oc.notify.config :as c]
+            [oc.lib.dynamo.common :as ttl]))
 
 ;; ----- DynamoDB -----
 
@@ -98,12 +97,18 @@
         :secure-uuid :secure_uuid
         :interaction-id :interaction_id
         :notify-at :notify_at})
-      :ttl (coerce/to-long (time/plus (time/now) (time/days c/notification-ttl)))))
+      :ttl (ttl/ttl-epoch c/notification-ttl)
+      ))
   true)
 
 (schema/defn ^:always-validate retrieve :- [Notification]
   [user-id :- lib-schema/UniqueID]
-  (->> (far/query c/dynamodb-opts table-name {:user_id [:eq user-id]})
+  ;; Filter out TTL records as TTL expiration doesn't happen with local DynamoDB,
+  ;; and on server DynamoDB it can be delayed by up to 48 hours
+  (->> (far/query c/dynamodb-opts table-name {:user_id [:eq user-id]}
+        {:filter-expr "#k > :v"
+         :expr-attr-names {"#k" "ttl"}
+         :expr-attr-vals {":v" (ttl/ttl-now)}})
       (map #(clojure.set/rename-keys % {
         :user_id :user-id
         :board_id :board-id

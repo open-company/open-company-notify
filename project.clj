@@ -14,16 +14,16 @@
   ;; All profile dependencies
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
-    [org.clojure/clojure "1.10.0-alpha8"]
+    [org.clojure/clojure "1.10.0"]
     ;; Command-line parsing https://github.com/clojure/tools.cli
     [org.clojure/tools.cli "0.4.1"] 
     ;; Web application library https://github.com/ring-clojure/ring
-    [ring/ring-devel "1.7.0"]
+    [ring/ring-devel "1.7.1"]
     ;; Web application library https://github.com/ring-clojure/ring
     ;; NB: clj-time pulled in by oc.lib
     ;; NB: joda-time pulled in by oc.lib via clj-time
     ;; NB: commons-codec pulled in by oc.lib
-    [ring/ring-core "1.7.0" :exclusions [clj-time joda-time commons-codec]]
+    [ring/ring-core "1.7.1" :exclusions [clj-time joda-time commons-codec]]
     ;; CORS library https://github.com/jumblerg/ring.middleware.cors
     [jumblerg/ring.middleware.cors "1.0.1"]
     ;; Ring logging https://github.com/nberger/ring-logger-timbre
@@ -41,7 +41,7 @@
     [org.apache.httpcomponents/httpclient "4.5.6"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.16.19"]
+    [open-company/lib "0.16.31"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
@@ -83,7 +83,7 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.3-alpha1" :exclusions [joda-time org.clojure/tools.macro clj-time commons-codec]] 
+        [midje "1.9.4" :exclusions [joda-time org.clojure/tools.macro clj-time commons-codec]] 
         ;; Clojure WebSocket client https://github.com/cch1/http.async.client
         [http.async.client "1.3.0"]
         ;; Test Ring requests https://github.com/weavejester/ring-mock
@@ -93,7 +93,7 @@
         ;; Example-based testing https://github.com/marick/lein-midje
         [lein-midje "3.2.1"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.2.9"]
+        [jonase/eastwood "0.3.4"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit        
         [lein-kibit "0.1.6" :exclusions [org.clojure/clojure]]
       ]
@@ -124,7 +124,7 @@
         ;; Catch spelling mistakes in docs and docstrings https://github.com/cldwalker/lein-spell
         [lein-spell "0.1.0"]
         ;; Plugin for finding dead code (be thoughtful, lots of false positives) https://github.com/venantius/yagni
-        [venantius/yagni "0.1.6" :exclusions [org.clojure/clojure]]
+        [venantius/yagni "0.1.7" :exclusions [org.clojure/clojure]]
       ]  
     }]
     :repl-config [:dev {
@@ -168,6 +168,7 @@
                       "OpenCompany Notify REPL\n"
                       "\nReady to do your bidding... I suggest (go) or (go <port>) as your first command.\n"))
     :init-ns dev
+    :timeout 120000
   }
 
   :aliases {

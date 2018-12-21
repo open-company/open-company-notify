@@ -1,0 +1,34 @@
+(ns oc.notify.db.migrations.update-ttl
+  (:require [taoensso.faraday :as far]
+            [clj-time.coerce :as coerce]
+            [oc.lib.db.migrations :as m]
+            [oc.notify.config :as config]
+            [oc.notify.resources.notification :as notification]
+            [oc.lib.dynamo.common :as ttl]))
+
+(defn fix-notification-ttl
+  "Run as a 1-time fix from the REPL."
+  []
+  (println "Scanning " notification/table-name)
+  (let [idx (atom 0)
+        results (far/scan config/dynamodb-opts notification/table-name {:attr-conds {:ttl [:gt 9999999999]}})]
+    (for [r results]
+      (let [fixed-ttl (coerce/to-epoch (coerce/from-long (long (:ttl r))))]
+        (println "   " @idx " - Fixing:" (:ttl r) "->" fixed-ttl)
+        (swap! idx inc)
+        (far/update-item config/dynamodb-opts notification/table-name
+         {:user_id (:user_id r)
+          :notify_at (:notify_at r)}
+         {:update-expr "SET #k = :v"
+          :expr-attr-names {"#k" "ttl"}
+          :expr-attr-vals  {":v" fixed-ttl}
+          :return :all-new})))))
+
+;; NB: The fact that these migrations have been run already does not currently persist, so the up method
+;; needs to be idempotent
+(defn up [dynamodb-opts]
+
+  ;; Add ttl to seen table
+  (ttl/maybe-enable-ttl dynamodb-opts notification/table-name)
+
+  true) ; return true on success
