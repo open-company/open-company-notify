@@ -46,7 +46,7 @@
 
 (defn sqs-handler
   "
-  Handle an incoming SQS message from storage to the notify service.
+  Handle an incoming SQS message to the notify service.
 
   {
     :notification-type 'add|update|delete'
