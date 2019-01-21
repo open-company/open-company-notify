@@ -61,10 +61,18 @@
     :content {:new {...}
               :old {...}}
   }
+
+  {
+    :notification-type 'add'
+    :resource-type 'reminder'
+    :org {...}
+    :reminder {...}
+  }
   "
   [msg done-channel]
+  (timbre/trace "Received message:" msg)
   (doseq [body (sqs/read-message-body (:body msg))]
-    (let [msg-body (cw/keywordize-keys (json/parse-string (:Message body)))
+    (let [msg-body (or (cw/keywordize-keys (json/parse-string (:Message body))) body)
           change-type (keyword (:notification-type msg-body))
           add? (= change-type :add)
           update? (= change-type :update)
@@ -72,6 +80,7 @@
           resource-type (keyword (:resource-type msg-body))
           entry? (= resource-type :entry)
           comment? (= resource-type :comment)
+          reminder? (= resource-type :reminder)
           org (:org msg-body)
           org-id (:uuid org)
           board-id (or (-> msg-body :board :uuid)
@@ -114,9 +123,11 @@
               (if (= (:user-id mention) author-id) ; check for a self-mention
                 (timbre/info "Skipping notification creation for self-mention.")
                 (let [notification (if comment?
-                                     (notification/->Notification mention org-id board-id entry-id entry-title secure-uuid interaction-id
-                                                                  change-at author)
-                                     (notification/->Notification mention org-id board-id entry-id entry-title secure-uuid change-at author))]
+                                     (notification/->InteractionNotification mention org-id board-id entry-id
+                                                                             entry-title secure-uuid interaction-id
+                                                                             change-at author)
+                                     (notification/->InteractionNotification mention org-id board-id entry-id
+                                                                             entry-title secure-uuid change-at author))]
                   (>!! persistence/persistence-chan {:notify true
                                                      :org org
                                                      :notification notification})))))))
@@ -125,20 +136,29 @@
       (when (and comment? add?)
         (timbre/info "Proccessing comment on a post...")
         (let [publisher (:item-publisher msg-body)
-              notification (notification/->Notification publisher new-body org-id board-id entry-id entry-title secure-uuid
-                                                        interaction-id change-at author)]
+              notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
+                                                                   entry-title secure-uuid interaction-id
+                                                                   change-at author)]
           (if (= (:user-id publisher) author-id) ; check for a self-comment
             (timbre/info "Skipping notification creation for self-comment.")
             (>!! persistence/persistence-chan {:notify true
                                                :org org
                                                :notification notification}))))
 
+      (when (and reminder? add?)
+        (timbre/info "Proccessing new reminder...")
+        (let [reminder (:reminder msg-body)
+              notification (notification/->ReminderNotification org-id reminder)]
+          (>!! persistence/persistence-chan {:notify true
+                                             :org org
+                                             :notification notification})))
+
       ;; Draft, org, board, or unknown
       (cond
        draft?
        (timbre/trace "Skipping draft message from SQS:" change-type resource-type)
 
-       (or comment? entry?)
+       (or comment? entry? (and reminder? add?))
        true ; already handled
 
        (= resource-type :org)

@@ -228,7 +228,7 @@ Server sends a `:user/notifications` message over the socket with a sequence of 
       :interaction-id "4444-4444-4444"
       :content "Reply to me."
       :author {:user-id "1234-5678-1234", :name "Wile E. Coyote", :avatar-url "http://www.emoticonswallpapers.com/avatar/cartoons/Wiley-Coyote-Dazed.jpg"}
-      :mention false
+      :mention? false
       :notify-at "2018-07-31T15:07:49.699Z"
     }
     {
@@ -238,7 +238,7 @@ Server sends a `:user/notifications` message over the socket with a sequence of 
       :entry-id "3333-3333-3333"
       :interaction-id "5555-5555-5555"
       :author {:user-id "1234-5678-1234", :name "Wile E. Coyote", :avatar-url "http://www.emoticonswallpapers.com/avatar/cartoons/Wiley-Coyote-Dazed.jpg"}
-      :mention false
+      :mention? false
       :notify-at "2018-07-31T15:08:48.162Z"
     }]
   }
