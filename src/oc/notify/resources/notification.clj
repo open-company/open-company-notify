@@ -41,7 +41,7 @@
   :mention? (schema/pred false?)
   :reminder? (schema/pred true?)}))
 
-;; ----- Constructor -----
+;; ----- Constructors -----
 
 (schema/defn ^:always-validate ->ReminderNotification :- ReminderNotification
   [org-id reminder]

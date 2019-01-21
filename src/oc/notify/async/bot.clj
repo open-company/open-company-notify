@@ -12,7 +12,7 @@
 (def BotTrigger 
   "All Slack bot triggers have the following properties."
   {
-    :type (schema/enum "notify")
+    :type (schema/enum "notify" "reminder-alert" "reminder-notification")
     :bot {
        :token lib-schema/NonBlankStr
        :id lib-schema/NonBlankStr
@@ -40,7 +40,7 @@
   (when-let* [slack-user (first (vals (:slack-users user)))
               slack-bot (db-common/read-resource conn "slack_orgs" (:slack-org-id slack-user))]
     (merge {
-      :type "notify"
+      :type (if (:reminder notification) "reminder-notification" "notify")
       :bot {
         :token (:bot-token slack-bot)
         :id (:bot-user-id slack-bot)
