@@ -1,0 +1,42 @@
+(ns oc.notify.db.migrations.update-reminder
+  (:require [taoensso.faraday :as far]
+            [oc.lib.db.migrations :as m]
+            [oc.notify.config :as config]
+            [oc.notify.resources.notification :as notification]))
+
+(defn update-notification-schema
+  []
+  (println (str "Scanning " notification/table-name "..."))
+  (let [idx (atom 0)
+        results1 (far/scan config/dynamodb-opts notification/table-name {:attr-conds {:mention [:eq true]}})
+        results2 (far/scan config/dynamodb-opts notification/table-name {:attr-conds {:mention [:eq false]}})]
+    (doseq [r (concat results1 results2)]
+      ;; Update :mention property to be :mention?
+      (println (str "   " @idx " - Fixing notification: " r))
+      (swap! idx inc)
+      (far/update-item config/dynamodb-opts notification/table-name
+         {:user_id (:user_id r)
+          :notify_at (:notify_at r)}
+         {:update-expr "SET #k = :v"
+          :expr-attr-names {"#k" "mention?"}
+          :expr-attr-vals  {":v" (:mention r)}
+          :return :none})
+      (far/update-item config/dynamodb-opts notification/table-name
+         {:user_id (:user_id r)
+          :notify_at (:notify_at r)}
+         {:update-map {"mention" [:delete]}})
+      ;; Default old notifications to reminder? as false
+      (when-not (:reminder? r))
+        (far/update-item config/dynamodb-opts notification/table-name
+           {:user_id (:user_id r)
+            :notify_at (:notify_at r)}
+           {:update-expr "SET #k = :v"
+            :expr-attr-names {"#k" "reminder?"}
+            :expr-attr-vals  {":v" false}
+            :return :none}))))
+
+;; NB: The fact that these migrations have been run already does not currently persist, so the up method
+;; needs to be idempotent
+(defn up [dynamodb-opts]
+  (update-notification-schema)
+  true) ; return true on success

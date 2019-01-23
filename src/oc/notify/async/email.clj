@@ -8,7 +8,7 @@
             [oc.notify.resources.notification :as notification]))
 
 (def EmailTrigger
-  {:type (schema/enum "notify")
+  {:type (schema/enum "notify" "reminder-alert" "reminder-notification")
    :user-id lib-schema/UniqueID
    :to lib-schema/EmailAddress
    (schema/optional-key :last-name) schema/Str
@@ -23,7 +23,7 @@
 
 (defn ->trigger [notification org user]
   (merge {
-    :type "notify"
+    :type (if (:reminder notification) "reminder-notification" "notify")
     :to (:email user)
     :notification notification
     :org (dissoc org :author :authors :viewers :created-at :updated-at :promoted)}

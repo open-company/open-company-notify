@@ -20,19 +20,40 @@
 (def Notification {
   :user-id lib-schema/UniqueID
   :org-id lib-schema/UniqueID
+  :notify-at lib-schema/ISO8601
+  :mention? schema/Bool
+  :reminder? schema/Bool
+  :author lib-schema/Author
+  schema/Keyword schema/Any})
+
+(def InteractionNotification (merge Notification {
   :board-id lib-schema/UniqueID
   :entry-id lib-schema/UniqueID
   (schema/optional-key :entry-title) schema/Str
   :secure-uuid lib-schema/UniqueID
   (schema/optional-key :interaction-id) lib-schema/UniqueID
-  :notify-at lib-schema/ISO8601
   :content lib-schema/NonBlankStr
-  :mention schema/Bool
-  :author lib-schema/Author})
+  :mention? schema/Bool
+  :reminder? (schema/pred false?)}))
 
-;; ----- Constructor -----
+(def ReminderNotification (merge Notification {
+  :reminder {schema/Keyword schema/Any}
+  :mention? (schema/pred false?)
+  :reminder? (schema/pred true?)}))
 
-(schema/defn ^:always-validate ->Notification :- Notification
+;; ----- Constructors -----
+
+(schema/defn ^:always-validate ->ReminderNotification :- ReminderNotification
+  [org-id reminder]
+  {:user-id (-> reminder :assignee :user-id)
+   :org-id org-id
+   :notify-at (:updated-at reminder)
+   :reminder reminder
+   :mention? false
+   :reminder? true
+   :author (:author reminder)})
+
+(schema/defn ^:always-validate ->InteractionNotification :- InteractionNotification
   
   ;; arity 7: a mention in a post
   ([mention :- Mention
@@ -51,12 +72,13 @@
     :secure-uuid secure-uuid
     :notify-at change-at
     :content (:parent mention)
-    :mention true
+    :mention? true
+    :reminder? false
     :author author})
 
   ;; arity 8: a mention in a comment
   ([mention org-id board-id entry-id entry-title secure-id interaction-id :- lib-schema/UniqueID change-at author]
-     (assoc (->Notification mention org-id board-id entry-id entry-title secure-id change-at author)
+     (assoc (->InteractionNotification mention org-id board-id entry-id entry-title secure-id change-at author)
     :interaction-id interaction-id))
 
   ;; arity 9: a comment on a post
@@ -79,10 +101,9 @@
     :interaction-id interaction-id
     :notify-at change-at
     :content comment-body
-    :mention false
+    :mention? false
+    :reminder? false
     :author author}))
-
-
 
 ;; ----- DB Operations -----
 
