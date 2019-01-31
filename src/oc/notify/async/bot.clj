@@ -40,7 +40,7 @@
   (when-let* [slack-user (first (vals (:slack-users user)))
               slack-bot (db-common/read-resource conn "slack_orgs" (:slack-org-id slack-user))]
     (merge {
-      :type (if (:reminder notification) "reminder-notification" "notify")
+      :type (or (-> notification :reminder :notification-type) "notify")
       :bot {
         :token (:bot-token slack-bot)
         :id (:bot-user-id slack-bot)

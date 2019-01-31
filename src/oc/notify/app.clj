@@ -153,6 +153,14 @@
                                              :org org
                                              :notification notification})))
 
+      (when (and reminder? add?)
+        (timbre/info "Proccessing new reminder...")
+        (let [reminder (:reminder msg-body)
+              notification (notification/->ReminderNotification org-id reminder)]
+          (>!! persistence/persistence-chan {:notify true
+                                             :org org
+                                             :notification notification})))
+
       ;; Draft, org, board, or unknown
       (cond
        draft?

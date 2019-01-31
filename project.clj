@@ -38,7 +38,7 @@
     ;; NB: encore pulled in from oc.lib
     [com.taoensso/faraday "1.10.0-alpha1" :exclusions [com.amazonaws/aws-java-sdk-dynamodb joda-time com.taoensso/encore]]
     ;; Faraday dependency, not pulled in? https://hc.apache.org/
-    [org.apache.httpcomponents/httpclient "4.5.6"]
+    [org.apache.httpcomponents/httpclient "4.5.7"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
     [open-company/lib "0.16.33"]
@@ -93,7 +93,7 @@
         ;; Example-based testing https://github.com/marick/lein-midje
         [lein-midje "3.2.1"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.3.4"]
+        [jonase/eastwood "0.3.5"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit        
         [lein-kibit "0.1.6" :exclusions [org.clojure/clojure]]
       ]
@@ -104,12 +104,13 @@
       :env ^:replace {
         :db-name "open_company_auth_dev"
         :hot-reload "true"
-        :log-level "debug"
+        :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
         :aws-access-key-id "CHANGE-ME"
         :aws-secret-access-key "CHANGE-ME"
         :aws-sqs-email-queue "CHANGE-ME"
         :aws-sqs-bot-queue "CHANGE-ME"
         :aws-sqs-notify-queue "CHANGE-ME"
+        :log-level "debug"
       }
       :plugins [
         ;; Check for code smells https://github.com/dakrone/lein-bikeshed
