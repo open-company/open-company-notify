@@ -23,7 +23,7 @@
 
 (defn ->trigger [notification org user]
   (merge {
-    :type (if (:reminder notification) "reminder-notification" "notify")
+    :type (or (-> notification :reminder :notification-type) "notify")
     :to (:email user)
     :notification notification
     :org (dissoc org :author :authors :viewers :created-at :updated-at :promoted)}
