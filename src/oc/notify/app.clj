@@ -132,18 +132,23 @@
                                                      :org org
                                                      :notification notification})))))))
 
-      ;; On an add of a comment, notify the post author
+      ;; On the add of a comment, where the publisher isn't mentioned, notify the publisher (post author)
       (when (and comment? add?)
         (timbre/info "Proccessing comment on a post...")
         (let [publisher (:item-publisher msg-body)
+              publisher-id (:user-id publisher)
+              mentions (set (map :user-id (mention/new-mentions [] (mention/mention-parents new-body))))
+              publisher-mentioned? (mentions publisher-id)
               notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                    entry-title secure-uuid interaction-id
                                                                    change-at author)]
           (if (= (:user-id publisher) author-id) ; check for a self-comment
             (timbre/info "Skipping notification creation for self-comment.")
-            (>!! persistence/persistence-chan {:notify true
+            (if publisher-mentioned?
+              (timbre/info "Skipping comment notification due to prior mention notification.")
+              (>!! persistence/persistence-chan {:notify true
                                                :org org
-                                               :notification notification}))))
+                                               :notification notification})))))
 
       (when (and reminder? add?)
         (timbre/info "Proccessing new reminder...")
