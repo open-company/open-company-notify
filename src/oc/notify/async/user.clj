@@ -36,7 +36,7 @@
       (timbre/info "Handle user message for:" user-id)
       (if-let [notify-user (db-common/read-resource conn "users" user-id)]
         (case (if (= (keyword (:notification-type notification)) :notify)
-                        (:notify-medium notify-user)
+                        (:notification-medium notify-user)
                         (:reminder-medium notify-user))
           "slack" (bot/send-trigger! (bot/->trigger conn notification org notify-user))
           "email" (email/send-trigger! (email/->trigger notification org notify-user))
