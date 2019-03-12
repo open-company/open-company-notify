@@ -20,12 +20,6 @@
 
 (reset! sente/debug-mode?_ (not c/prod?))
 
-(defn check-origin-header [ring-req]
-  (let [origin (-> ring-req :headers (get "origin"))]
-    (or (= origin "http://localhost:3559")
-        (= origin "https://staging.carrot.io")
-        (= origin "https://carrot.io"))))
-
 (let [{:keys [ch-recv send-fn connected-uids ajax-post-fn ajax-get-or-ws-handshake-fn]}
       (sente/make-channel-socket-server! (get-sch-adapter)
         {:packer :edn
@@ -77,13 +71,14 @@
   :auth/jwt
 
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn ring-req]}]
-  (let [origin-check (check-origin-header ring-req)
+  (let [valid-origin? (watcher/valid-origin-header? ring-req)
         client-id (-> ring-req :params :client-id)
         jwt-valid? (jwt/valid? (:jwt ?data) c/passphrase)]
+    (timbre/info "[websocket] origin" (-> ring-req :headers (get "origin")) (if valid-origin? "valid" "invalid"))
     (timbre/info "[websocket] auth/jwt" (if jwt-valid? "valid" "invalid") "by" client-id)
     ;; Get the jwt and disconnect the client if it's not good!
     (when ?reply-fn
-      (?reply-fn {:valid (and origin-check
+      (?reply-fn {:valid (and valid-origin?
                               jwt-valid?)}))))
 
 (defmethod -event-msg-handler
