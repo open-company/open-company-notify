@@ -70,7 +70,7 @@
 (defmethod -event-msg-handler
   :auth/jwt
 
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn ring-req]}]
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
   (let [valid-origin? (watcher/valid-origin-header? ring-req)
         client-id (-> ring-req :params :client-id)
         jwt-valid? (jwt/valid? (:jwt ?data) c/passphrase)]
