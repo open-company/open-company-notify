@@ -67,3 +67,7 @@
 ;; ----- Notify Service -----
 
 (defonce notification-ttl (or (env :oc-notification-ttl) 30)) ; days
+
+;; ----- WS origin -----
+
+(defonce ensure-origin  (or (env :oc-ws-ensure-origin) false))

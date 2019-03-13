@@ -25,7 +25,8 @@
     [oc.notify.api.websockets :as websockets-api]
     [oc.notify.async.persistence :as persistence]
     [oc.notify.lib.mention :as mention]
-    [oc.notify.resources.notification :as notification]))
+    [oc.notify.resources.notification :as notification]
+    [oc.lib.middleware.wrap-ensure-origin :refer (wrap-ensure-origin)]))
 
 (def draft-board-uuid "0000-0000-0000")
 
@@ -200,6 +201,7 @@
     "AWS SQS bot queue: " c/aws-sqs-bot-queue "\n"
     "AWS SQS notify queue: " c/aws-sqs-notify-queue "\n"
     "Hot-reload: " c/hot-reload "\n"
+    "Ensure origin: " c/ensure-origin "\n"
     "Sentry: " c/dsn "\n\n"
     (when c/intro? "Ready to serve...\n"))))
 
@@ -211,6 +213,7 @@
     true              wrap-keyword-params
     true              wrap-params
     true              (wrap-cors #".*")
+    c/ensure-origin   wrap-ensure-origin
     c/hot-reload      wrap-reload))
 
 (defn start
