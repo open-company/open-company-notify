@@ -52,6 +52,7 @@
 
 (defonce hot-reload (bool (or (env :hot-reload) false)))
 (defonce notify-server-port (Integer/parseInt (or (env :port) "3010")))
+(defonce ensure-origin  (or (env :oc-ws-ensure-origin) true))
 
 ;; ----- AWS SQS -----
 
@@ -64,10 +65,6 @@
 
 (defonce passphrase (env :open-company-auth-passphrase))
 
-;; ----- Notify Service -----
+;; ----- Notify service -----
 
 (defonce notification-ttl (or (env :oc-notification-ttl) 30)) ; days
-
-;; ----- WS origin -----
-
-(defonce ensure-origin  (or (env :oc-ws-ensure-origin) false))

@@ -14,7 +14,7 @@
   ;; All profile dependencies
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
-    [org.clojure/clojure "1.10.0"]
+    [org.clojure/clojure "1.10.1-beta1"]
     ;; Command-line parsing https://github.com/clojure/tools.cli
     [org.clojure/tools.cli "0.4.1"] 
     ;; Web application library https://github.com/ring-clojure/ring
@@ -41,7 +41,7 @@
     [org.apache.httpcomponents/httpclient "4.5.7"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.16.39alpha-3"]
+    [open-company/lib "0.16.39-alpha4"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
@@ -63,7 +63,7 @@
   ;; All profile plugins
   :plugins [
     ;; Common ring tasks https://github.com/weavejester/lein-ring
-    [lein-ring "0.12.4"]
+    [lein-ring "0.12.5"]
     ;; Get environment settings from different sources https://github.com/weavejester/environ
     [lein-environ "1.1.0"]
   ]
@@ -75,6 +75,7 @@
       :env {
         :db-name "open_company_auth_qa"
         :hot-reload "false"
+        :oc-ws-ensure-origin false ; local
         :open-company-auth-passphrase "this_is_a_qa_secret" ; JWT secret
       }
       :dependencies [
@@ -104,6 +105,7 @@
       :env ^:replace {
         :db-name "open_company_auth_dev"
         :hot-reload "true"
+        :oc-ws-ensure-origin false ; local
         :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
         :aws-access-key-id "CHANGE-ME"
         :aws-secret-access-key "CHANGE-ME"
@@ -115,7 +117,7 @@
       :plugins [
         ;; Check for code smells https://github.com/dakrone/lein-bikeshed
         ;; NB: org.clojure/tools.cli is pulled in by lein-kibit
-        [lein-bikeshed "0.5.1" :exclusions [org.clojure/tools.cli]] 
+        [lein-bikeshed "0.5.2" :exclusions [org.clojure/tools.cli]] 
         ;; Runs bikeshed, kibit and eastwood https://github.com/itang/lein-checkall
         [lein-checkall "0.1.1"]
         ;; pretty-print the lein project map https://github.com/technomancy/leiningen/tree/master/lein-pprint
