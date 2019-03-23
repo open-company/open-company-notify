@@ -63,8 +63,8 @@
 (defonce aws-sqs-bot-queue (env :aws-sqs-bot-queue))
 (defonce aws-sqs-notify-queue (env :aws-sqs-notify-queue))
 
-(defonce passphrase (env :open-company-auth-passphrase))
-
 ;; ----- Notify service -----
 
 (defonce notification-ttl (or (env :oc-notification-ttl) 30)) ; days
+
+(defonce passphrase (env :open-company-auth-passphrase))
