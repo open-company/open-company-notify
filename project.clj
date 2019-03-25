@@ -75,7 +75,7 @@
       :env {
         :db-name "open_company_auth_qa"
         :hot-reload "false"
-        :oc-ws-ensure-origin false ; local
+        :oc-ws-ensure-origin "false" ; local
         :open-company-auth-passphrase "this_is_a_qa_secret" ; JWT secret
       }
       :dependencies [
@@ -105,7 +105,7 @@
       :env ^:replace {
         :db-name "open_company_auth_dev"
         :hot-reload "true"
-        :oc-ws-ensure-origin false ; local
+        :oc-ws-ensure-origin "false" ; local
         :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
         :aws-access-key-id "CHANGE-ME"
         :aws-secret-access-key "CHANGE-ME"
