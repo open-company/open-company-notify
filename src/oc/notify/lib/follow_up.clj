@@ -2,8 +2,9 @@
   (:require
     [clojure.set :as set]))
 
-(defn assigned-follow-ups [author prior-follow-ups current-follow-ups]
+(defn assigned-follow-ups
   "Returns newly assigned follow-ups that are not follow-ups for the author."
+  [author prior-follow-ups current-follow-ups]
   (let [prior (set (remove :completed prior-follow-ups))
         current (set (remove :completed current-follow-ups))
         new (set/difference current prior)]
