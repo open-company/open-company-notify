@@ -23,6 +23,7 @@
   :notify-at lib-schema/ISO8601
   :mention? schema/Bool
   :reminder? schema/Bool
+  :follow-up? schema/Bool
   :author lib-schema/Author
   schema/Keyword schema/Any})
 
@@ -34,14 +35,43 @@
   (schema/optional-key :interaction-id) lib-schema/UniqueID
   :content lib-schema/NonBlankStr
   :mention? schema/Bool
-  :reminder? (schema/pred false?)}))
+  :reminder? (schema/pred false?)
+  :follow-up? (schema/pred false?)}))
 
 (def ReminderNotification (merge Notification {
   :reminder {schema/Keyword schema/Any}
   :mention? (schema/pred false?)
-  :reminder? (schema/pred true?)}))
+  :reminder? (schema/pred true?)
+  :follow-up? (schema/pred false?)}))
+
+(def FollowUpNotification (merge Notification {
+  :follow-up {schema/Keyword schema/Any}
+  :mention? (schema/pred false?)
+  :reminder? (schema/pred false?)
+  :follow-up? (schema/pred true?)}))
 
 ;; ----- Constructors -----
+
+(schema/defn ^:always-validate ->FollowUpNotification :- FollowUpNotification
+  [org-id :- lib-schema/UniqueID
+   board-id :- lib-schema/UniqueID
+   entry-id :- lib-schema/UniqueID
+   entry-title
+   secure-uuid :- lib-schema/UniqueID
+   follow-up
+   author :- lib-schema/Author]
+  {:user-id (-> follow-up :assignee :user-id)
+   :org-id org-id
+   :board-id board-id
+   :notify-at (:created-at follow-up)
+   :mention? false
+   :reminder? false
+   :follow-up? true
+   :follow-up follow-up
+   :entry-id entry-id
+   :entry-title (if (nil? entry-title) "post" entry-title)
+   :secure-uuid secure-uuid
+   :author author})
 
 (schema/defn ^:always-validate ->ReminderNotification :- ReminderNotification
   [org-id reminder]
@@ -51,6 +81,7 @@
    :reminder reminder
    :mention? false
    :reminder? true
+   :follow-up? false
    :author (:author reminder)})
 
 (schema/defn ^:always-validate ->InteractionNotification :- InteractionNotification
@@ -74,6 +105,7 @@
     :content (:parent mention)
     :mention? true
     :reminder? false
+    :follow-up? false
     :author author})
 
   ;; arity 8: a mention in a comment
