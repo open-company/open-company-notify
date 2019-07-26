@@ -23,7 +23,7 @@
   :notify-at lib-schema/ISO8601
   :mention? schema/Bool
   :reminder? schema/Bool
-  :follow-up? schema/Bool
+  (schema/optional-key :follow-up?) schema/Bool
   :author lib-schema/Author
   schema/Keyword schema/Any})
 
@@ -36,19 +36,19 @@
   :content lib-schema/NonBlankStr
   :mention? schema/Bool
   :reminder? (schema/pred false?)
-  :follow-up? (schema/pred false?)}))
+  (schema/optional-key :follow-up?) (schema/pred false?)}))
 
 (def ReminderNotification (merge Notification {
   :reminder {schema/Keyword schema/Any}
   :mention? (schema/pred false?)
   :reminder? (schema/pred true?)
-  :follow-up? (schema/pred false?)}))
+  (schema/optional-key :follow-up?) (schema/pred false?)}))
 
 (def FollowUpNotification (merge Notification {
   :follow-up {schema/Keyword schema/Any}
   :mention? (schema/pred false?)
   :reminder? (schema/pred false?)
-  :follow-up? (schema/pred true?)}))
+  (schema/optional-key :follow-up?) (schema/pred true?)}))
 
 ;; ----- Constructors -----
 
