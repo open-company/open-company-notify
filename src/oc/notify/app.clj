@@ -69,6 +69,7 @@
     :resource-type 'reminder'
     :org {...}
     :reminder {...}
+    :follow-up {...}
   }
   "
   [msg done-channel]
