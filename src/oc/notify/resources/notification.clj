@@ -34,6 +34,7 @@
   (schema/optional-key :interaction-id) lib-schema/UniqueID
   :content lib-schema/NonBlankStr
   :mention? schema/Bool
+  (schema/optional-key :entry-publisher) lib-schema/Author
   :reminder? (schema/pred false?)}))
 
 (def ReminderNotification (merge Notification {
@@ -93,6 +94,33 @@
    change-at :- lib-schema/ISO8601
    author :- lib-schema/Author]
    {:user-id (:user-id entry-publisher)
+    :org-id org-id
+    :board-id board-id
+    :entry-id entry-id
+    :entry-title (if (nil? entry-title) "comment" entry-title)
+    :secure-uuid secure-uuid
+    :interaction-id interaction-id
+    :
+    :notify-at change-at
+    :content comment-body
+    :mention? false
+    :reminder? false
+    :author author})
+
+  ;; arity 10: a comment on a post not for the post author
+  ([entry-publisher :- lib-schema/Author
+   comment-body :- schema/Str
+   org-id :- lib-schema/UniqueID
+   board-id :- lib-schema/UniqueID
+   entry-id :- lib-schema/UniqueID
+   entry-title
+   secure-uuid :- lib-schema/UniqueID
+   interaction-id :- lib-schema/UniqueID
+   change-at :- lib-schema/ISO8601
+   author :- lib-schema/Author
+   user :- lib/schema/Author]
+   {:user-id (:user-id user)
+    :entry-publisher entry-publisher
     :org-id org-id
     :board-id board-id
     :entry-id entry-id

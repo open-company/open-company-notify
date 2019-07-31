@@ -140,9 +140,18 @@
               publisher-id (:user-id publisher)
               mentions (set (map :user-id (mention/new-mentions [] (mention/mention-parents new-body))))
               publisher-mentioned? (mentions publisher-id)
+              notify-users (:notify-users msg-body)
+              notify-users-without-mentions (filter (fn [user] (some #(= % (:user-id user)) mention)) notify-users)
               notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                    entry-title secure-uuid interaction-id
                                                                    change-at author)]
+          (doseq [user notify-users-without-mentions]
+            (let [notification (notification/->InteractionNotification publisher org-id board-id entry-id
+                                                                             entry-title secure-uuid interaction-id
+                                                                             change-at author user)]
+                (>!! persistence/persistence-chan {:notify true
+                                                   :org org
+                                                   :notification notification})))
           (if (= (:user-id publisher) author-id) ; check for a self-comment
             (timbre/info "Skipping notification creation for self-comment.")
             (if publisher-mentioned?
