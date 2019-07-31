@@ -141,12 +141,12 @@
               mentions (set (map :user-id (mention/new-mentions [] (mention/mention-parents new-body))))
               publisher-mentioned? (mentions publisher-id)
               notify-users (:notify-users msg-body)
-              notify-users-without-mentions (filter (fn [user] (some #(= % (:user-id user)) mentions)) notify-users)
+              notify-users-without-mentions (filter (fn [user] (not (some #(= % (:user-id user)) mentions))) notify-users)
               notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                    entry-title secure-uuid interaction-id
-                                                                   change-at author)]
+                                                                   change-at author publisher)]
           (doseq [user notify-users-without-mentions]
-            (let [notification (notification/->InteractionNotification publisher org-id board-id entry-id
+            (let [notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                              entry-title secure-uuid interaction-id
                                                                              change-at author user)]
                 (>!! persistence/persistence-chan {:notify true
