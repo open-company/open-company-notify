@@ -100,7 +100,6 @@
     :entry-title (if (nil? entry-title) "comment" entry-title)
     :secure-uuid secure-uuid
     :interaction-id interaction-id
-    :
     :notify-at change-at
     :content comment-body
     :mention? false
@@ -118,7 +117,7 @@
    interaction-id :- lib-schema/UniqueID
    change-at :- lib-schema/ISO8601
    author :- lib-schema/Author
-   user :- lib/schema/Author]
+   user :- lib-schema/Author]
    {:user-id (:user-id user)
     :entry-publisher entry-publisher
     :org-id org-id
