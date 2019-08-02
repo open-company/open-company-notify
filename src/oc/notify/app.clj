@@ -101,6 +101,7 @@
                                     (and delete? (-> msg-body :content :old :status)))))
           author (lib-schema/author-for-user (:user msg-body))
           new-body (-> msg-body :content :new :body)
+          new-abstract (-> msg-body :content :new :abstract)
           author-id (:user-id author)
           user-id (:user-id author)]
     
@@ -113,8 +114,10 @@
       
         (timbre/info "Processing change for mentions...")
         (let [old-body (-> msg-body :content :old :body)
-              mentions (mention/mention-parents new-body)
-              prior-mentions (mention/mention-parents old-body)
+              old-abstract (-> msg-body :content :old :abstract)
+              ;; Mentions will be deduped when calling new-mentions
+              prior-mentions (concat (mention/mention-parents old-body) (mention/mention-parents old-abstract))
+              mentions (concat (mention/mention-parents new-body) (mention/mention-parents new-abstract))
               new-mentions (mention/new-mentions prior-mentions mentions)]
 
           ;; If there are new mentions, we need to persist them
