@@ -10,7 +10,8 @@
             [oc.lib.db.pool :as pool]
             [oc.lib.db.common :as db-common]
             [oc.notify.async.email :as email]
-            [oc.notify.async.bot :as bot]))
+            [oc.notify.async.bot :as bot]
+            [oc.notify.async.expo :as expo]))
 
 ;; ----- core.async -----
 
@@ -36,12 +37,14 @@
           org (:org message)]
       (timbre/info "Handle user message for:" user-id)
       (if-let [notify-user (db-common/read-resource conn "users" user-id)]
-        (case (if reminder?
-                (:reminder-medium notify-user)
-                (:notification-medium notify-user))
-          "slack" (bot/send-trigger! (bot/->trigger conn notification org notify-user))
-          "email" (email/send-trigger! (email/->trigger notification org notify-user))
-          :else (timbre/info "Skipping out-of-app notification for user:" user-id))
+        (do
+          (expo/send-push-notifications! (expo/->push-notifications notification notify-user))
+          (case (if reminder?
+                  (:reminder-medium notify-user)
+                  (:notification-medium notify-user))
+            "slack" (bot/send-trigger! (bot/->trigger conn notification org notify-user))
+            "email" (email/send-trigger! (email/->trigger notification org notify-user))
+            :else (timbre/info "Skipping out-of-app notification for user:" user-id)))
         (timbre/warn "Notification for non-existent user:" user-id)))))
 
   ([_db-pool message]
