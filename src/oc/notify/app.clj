@@ -265,7 +265,7 @@
 
   ;; Echo config information
   (println (str "\n"
-    (when c/intro? (str (slurp (java-io/resource "ascii_art.txt")) "\n"))
+    (when c/intro? (str (slurp (java-io/resource "oc/assets/ascii_art.txt")) "\n"))
     "OpenCompany Notify Service\n"))
   (echo-config port))
 

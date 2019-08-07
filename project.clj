@@ -41,7 +41,7 @@
     [org.apache.httpcomponents/httpclient "4.5.9"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.17.12"]
+    [open-company/lib "0.17.14"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
@@ -167,7 +167,7 @@
   }
 
   :repl-options {
-    :welcome (println (str "\n" (slurp (clojure.java.io/resource "ascii_art.txt")) "\n"
+    :welcome (println (str "\n" (slurp (clojure.java.io/resource "oc/assets/ascii_art.txt")) "\n"
                       "OpenCompany Notify REPL\n"
                       "\nReady to do your bidding... I suggest (go) or (go <port>) as your first command.\n"))
     :init-ns dev
