@@ -44,7 +44,7 @@
                   (:notification-medium notify-user))
             "slack" (bot/send-trigger! (bot/->trigger conn notification org notify-user))
             "email" (email/send-trigger! (email/->trigger notification org notify-user))
-            :else (timbre/info "Skipping out-of-app notification for user:" user-id)))
+            (timbre/info "Skipping out-of-app notification for user:" user-id)))
         (timbre/warn "Notification for non-existent user:" user-id)))))
 
   ([_db-pool message]
