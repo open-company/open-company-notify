@@ -64,14 +64,15 @@
 (defn send-push-notifications!
   [push-notifs]
   (when (seq push-notifs)
-    (let [{:keys [tickets]} (lambda-send-push-notifications! push-notifs)]
-      (timbre/info "Push notification tickets: " tickets)
-      (sqs/send-message
-       {:access-key config/aws-access-key-id
-        :secret-key config/aws-secret-access-key}
-       "carrot-local-dev-calvin-expo"
-       (json/generate-string {:notifications push-notifs
-                              :tickets tickets}))
+    (let [{:keys [tickets error]} (lambda-send-push-notifications! push-notifs)]
+      (if error
+        (throw (ex-info error {:push-notifications push-notifs}))
+        (sqs/send-message
+         {:access-key config/aws-access-key-id
+          :secret-key config/aws-secret-access-key}
+         "carrot-local-dev-calvin-expo"
+         (json/generate-string {:push-notifications push-notifs
+                                :tickets tickets})))
       tickets)))
 
 (comment
@@ -86,9 +87,14 @@
      :body      "Hey there, this is Clojure!"
      :data      {}}])
 
+  (send-push-notifications!
+   [{:pushToken "NOPE"
+     :body      "Hey there, this is Clojure!"
+     :data      {}}])
+
   (def payload
     (-> (send-push-notifications!
-         [{:pushToken "ExponentPushToken[m7WFXDHNuI8PRZPCDXUeVI]"
+         [{:pushToken "NOPE"
            :body      "Hey there, this is Clojure!"
            :data      {}}])
         :payload))

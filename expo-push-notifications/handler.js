@@ -2,6 +2,20 @@
 
 const { Expo } = require('expo-server-sdk');
 
+const successResponse = (data) => {
+  return {
+    statusCode: 200,
+    body: JSON.stringify(data, null, 2)
+  };
+}
+
+const errorResponse = (statusCode, error) => {
+  return ({
+    statusCode,
+    body: JSON.stringify({ error }, null, 2)
+  });
+}
+
 module.exports.sendPushNotifications = async event => {
 
   let expo = new Expo();
@@ -13,8 +27,9 @@ module.exports.sendPushNotifications = async event => {
 
     // Check that all your push tokens appear to be valid Expo push tokens
     if (!Expo.isExpoPushToken(notif.pushToken)) {
-      console.error(`Push token ${notif.pushToken} is not valid push token`);
-      continue;
+      const msg = `Push token ${notif.pushToken} is not valid push token`;
+      console.error(msg);
+      return errorResponse(400, msg);
     }
 
     messages.push({
@@ -43,13 +58,11 @@ module.exports.sendPushNotifications = async event => {
       tickets.push(...ticketChunk);
     } catch (error) {
       console.error(error);
+      return errorResponse(500, error);
     }
   }
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ tickets }, null, 2)
-  };
+  return successResponse({ tickets });
 };
 
 // Later, after the Expo push notification service has delivered the
@@ -93,7 +106,8 @@ module.exports.getPushNotificationReceipts = async event => {
       // notification and information about an error, if one occurred.
       // This loop is here strictly for the purposes of logging any problems/errors
       // for audit purposes; it does not affect this function's return value.
-      for (let receipt of receiptChunk) {
+      for (let rid in receiptChunk) {
+        const receipt = receiptChunk[rid];
         if (receipt.status === 'ok') {
           continue;
         } else if (receipt.status === 'error') {
@@ -107,11 +121,9 @@ module.exports.getPushNotificationReceipts = async event => {
       }
     } catch (error) {
       console.error(error);
+      return errorResponse(500, error);
     }
   }
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ receipts }, null, 2)
-  };
+  return successResponse({ receipts });
 };
