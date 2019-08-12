@@ -48,13 +48,7 @@ module.exports.sendPushNotifications = async event => {
 
   return {
     statusCode: 200,
-    body: JSON.stringify(
-      {
-        tickets: tickets
-      },
-      null,
-      2
-    ),
+    body: JSON.stringify({ tickets }, null, 2)
   };
 };
 
@@ -93,15 +87,16 @@ module.exports.getPushNotificationReceipts = async event => {
     try {
       let receiptChunk = await expo.getPushNotificationReceiptsAsync(chunk);
       console.log(receiptChunk);
-      receipts.push(...receiptChunk);
+      receipts.push(receiptChunk);
 
       // The receipts specify whether Apple or Google successfully received the
       // notification and information about an error, if one occurred.
+      // This loop is here strictly for the purposes of logging any problems/errors
+      // for audit purposes; it does not affect this function's return value.
       for (let receipt of receiptChunk) {
         if (receipt.status === 'ok') {
           continue;
         } else if (receipt.status === 'error') {
-          // Do some error logging for audit purposes
           console.error(`There was an error sending a notification: ${receipt.message}`);
           if (receipt.details && receipt.details.error) {
             console.error(
@@ -110,20 +105,13 @@ module.exports.getPushNotificationReceipts = async event => {
           }
         }
       }
-
-      return {
-        statusCode: 200,
-        body: JSON.stringify(
-          {
-            receipts: receipts
-          },
-          null,
-          2
-        )
-      };
-
     } catch (error) {
       console.error(error);
     }
   }
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ receipts }, null, 2)
+  };
 };

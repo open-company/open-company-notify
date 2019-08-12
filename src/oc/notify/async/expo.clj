@@ -4,8 +4,7 @@
             [taoensso.timbre :as timbre]
             [cheshire.core :as json]
             [amazonica.aws.sqs :as sqs]
-            [oc.notify.config :as config])
-  (:import [java.nio.charset StandardCharsets]))
+            [oc.notify.config :as config]))
 
 (defn notification-body
   [notification user]
@@ -54,41 +53,44 @@
   (let [push-tokens (:expo-push-tokens user [])]
     (keep (partial ->push-notification notification user) push-tokens)))
 
-(defn- parse-lambda-response
-  [{:keys [payload] :as response}]
-  (-> (.. StandardCharsets/UTF_8 (decode payload) toString)
-      (json/parse-string keyword)
-      :body
-      (json/parse-string keyword)))
+(defn- lambda-send-push-notifications!
+  [push-notifs]
+  (timbre/info "Sending push notifications: " push-notifs)
+  (-> (lambda/invoke-fn  "expo-push-notifications-dev-sendPushNotifications"
+                         {:notifications push-notifs})
+      lambda/parse-response))
 
 ;; TODO: extract these hard-coded configuration strings out into config
 (defn send-push-notifications!
   [push-notifs]
   (when (seq push-notifs)
-    (timbre/info "Sending push notifications" push-notifs)
-    (let [response    (lambda/invoke-fn  "expo-push-notifications-dev-sendPushNotifications"
-                                         {:notifications push-notifs})
-          {:keys [tickets]} (parse-lambda-response response)]
+    (let [{:keys [tickets]} (lambda-send-push-notifications! push-notifs)]
       (timbre/info "Push notification tickets: " tickets)
       (sqs/send-message
        {:access-key config/aws-access-key-id
         :secret-key config/aws-secret-access-key}
        "carrot-local-dev-calvin-expo"
-       (json/generate-string {:tickets tickets}))
+       (json/generate-string {:notifications push-notifs
+                              :tickets tickets}))
       tickets)))
 
 (comment
 
   (send-push-notifications!
-   [{:pushToken   "ExponentPushToken[m7WFXDHNuI8PRZPCDXUeVI]"
-     :body "Hey there, this is Clojure!"
-     :data {}}])
+   [{:pushToken "ExponentPushToken[m7WFXDHNuI8PRZPCDXUeVI]"
+     :body      "Hey there, this is Clojure!"
+     :data      {}}])
+
+  (send-push-notifications!
+   [{:pushToken "ExponentPushToken[ns_q4cLNLBO0KqnY9YvUBa]"
+     :body      "Hey there, this is Clojure!"
+     :data      {}}])
 
   (def payload
     (-> (send-push-notifications!
-         [{:pushToken   "ExponentPushToken[m7WFXDHNuI8PRZPCDXUeVI]"
-           :body "Hey there, this is Clojure!"
-           :data {}}])
+         [{:pushToken "ExponentPushToken[m7WFXDHNuI8PRZPCDXUeVI]"
+           :body      "Hey there, this is Clojure!"
+           :data      {}}])
         :payload))
 
   (def parsed-payload
