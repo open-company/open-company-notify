@@ -56,8 +56,8 @@
 (defn- lambda-send-push-notifications!
   [push-notifs]
   (timbre/info "Sending push notifications: " push-notifs)
-  (-> (lambda/invoke-fn  "expo-push-notifications-dev-sendPushNotifications"
-                         {:notifications push-notifs})
+  (-> (lambda/invoke-fn (str config/aws-lambda-expo-prefix "sendPushNotifications")
+                        {:notifications push-notifs})
       lambda/parse-response))
 
 ;; TODO: extract these hard-coded configuration strings out into config
@@ -70,7 +70,7 @@
         (sqs/send-message
          {:access-key config/aws-access-key-id
           :secret-key config/aws-secret-access-key}
-         "carrot-local-dev-calvin-expo"
+         config/aws-sqs-expo-queue
          (json/generate-string {:push-notifications push-notifs
                                 :tickets tickets})))
       tickets)))
