@@ -1,4 +1,4 @@
-(ns oc.notify.async.expo
+(ns oc.notify.lib.expo
   (:require [oc.lib.lambda.common :as lambda]
             [oc.lib.user :as user-lib]
             [taoensso.timbre :as timbre]

@@ -4,14 +4,14 @@
 
   Use of this is through core/async. A message is sent to the `user-chan`.
   "
-  (:require [clojure.core.async :as async :refer (>!! <!)]
-            [defun.core :refer (defun-)]
-            [taoensso.timbre :as timbre]
-            [oc.lib.db.pool :as pool]
+  (:require [clojure.core.async :as async :refer [<! >!!]]
+            [defun.core :refer [defun-]]
             [oc.lib.db.common :as db-common]
-            [oc.notify.async.email :as email]
+            [oc.lib.db.pool :as pool]
             [oc.notify.async.bot :as bot]
-            [oc.notify.async.expo :as expo]))
+            [oc.notify.async.email :as email]
+            [oc.notify.lib.expo :as expo]
+            [taoensso.timbre :as timbre]))
 
 ;; ----- core.async -----
 
