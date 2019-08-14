@@ -14,7 +14,7 @@
   ;; All profile dependencies
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
-    [org.clojure/clojure "1.10.1-RC1"]
+    [org.clojure/clojure "1.10.1"]
     ;; Command-line parsing https://github.com/clojure/tools.cli
     [org.clojure/tools.cli "0.4.2"] 
     ;; Web application library https://github.com/ring-clojure/ring
@@ -38,7 +38,7 @@
     ;; NB: encore pulled in from oc.lib
     [com.taoensso/faraday "1.10.0-alpha1" :exclusions [com.amazonaws/aws-java-sdk-dynamodb joda-time com.taoensso/encore]]
     ;; Faraday dependency, not pulled in? https://hc.apache.org/
-    [org.apache.httpcomponents/httpclient "4.5.8"]
+    [org.apache.httpcomponents/httpclient "4.5.9"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
     [open-company/lib "0.17.15-SNAPSHOT"]
@@ -84,9 +84,9 @@
         ;; NB: clj-time is pulled in by oc.lib
         ;; NB: joda-time is pulled in by oc.lib via clj-time
         ;; NB: commons-codec pulled in by oc.lib
-        [midje "1.9.8" :exclusions [joda-time org.clojure/tools.macro clj-time commons-codec]] 
+        [midje "1.9.9" :exclusions [joda-time org.clojure/tools.macro clj-time commons-codec]] 
         ;; Clojure WebSocket client https://github.com/cch1/http.async.client
-        [http.async.client "1.3.0"]
+        [http.async.client "1.3.1"]
         ;; Test Ring requests https://github.com/weavejester/ring-mock
         [ring-mock "0.1.5"]
       ]
@@ -94,9 +94,9 @@
         ;; Example-based testing https://github.com/marick/lein-midje
         [lein-midje "3.2.1"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.3.5"]
+        [jonase/eastwood "0.3.6"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit        
-        [lein-kibit "0.1.6" :exclusions [org.clojure/clojure]]
+        [lein-kibit "0.1.7" :exclusions [org.clojure/clojure]]
       ]
     }
 
@@ -167,7 +167,7 @@
   }
 
   :repl-options {
-    :welcome (println (str "\n" (slurp (clojure.java.io/resource "ascii_art.txt")) "\n"
+    :welcome (println (str "\n" (slurp (clojure.java.io/resource "oc/assets/ascii_art.txt")) "\n"
                       "OpenCompany Notify REPL\n"
                       "\nReady to do your bidding... I suggest (go) or (go <port>) as your first command.\n"))
     :init-ns dev

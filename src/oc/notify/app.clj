@@ -25,6 +25,7 @@
     [oc.notify.api.websockets :as websockets-api]
     [oc.notify.async.persistence :as persistence]
     [oc.notify.lib.mention :as mention]
+    [oc.notify.lib.follow-up :as follow-up]
     [oc.notify.resources.notification :as notification]
     [oc.lib.middleware.wrap-ensure-origin :refer (wrap-ensure-origin)]))
 
@@ -68,6 +69,7 @@
     :resource-type 'reminder'
     :org {...}
     :reminder {...}
+    :follow-up {...}
   }
   "
   [msg done-channel]
@@ -101,10 +103,34 @@
                                     (and delete? (-> msg-body :content :old :status)))))
           author (lib-schema/author-for-user (:user msg-body))
           new-body (-> msg-body :content :new :body)
+          new-abstract (-> msg-body :content :new :abstract)
           author-id (:user-id author)
           user-id (:user-id author)]
     
       (timbre/info "Received message from SQS:" msg-body)
+
+      ;; On an add/update of an entry, look for new follow-ups
+      (when (and
+             entry?
+             (not draft?)
+             (or add? update?))
+      
+        (timbre/info "Processing change for follow-ups...")
+        (let [old-entry (-> msg-body :content :old)
+              prior-follow-ups (if (:draft old-entry) [] (:follow-ups old-entry))
+              current-follow-ups (-> msg-body :content :new :follow-ups)
+              new-follow-ups (follow-up/assigned-follow-ups author prior-follow-ups current-follow-ups)]
+
+          ;; If there are follow-ups on the new entry, we need to create a notification and persist it
+          (when (not-empty new-follow-ups)
+            (timbre/info "Requesting persistence for" (count new-follow-ups) "follow-up(s).")
+            (doseq [follow-up new-follow-ups]
+              (let [notification (notification/->FollowUpNotification org-id board-id entry-id entry-title
+                                                                      secure-uuid follow-up author)]
+                (>!! persistence/persistence-chan {:notify true
+                                                   :org org
+                                                   :notification notification}))))))
+
       ;; On an add/update of entry/comment, look for new mentions
       (when (and
              (not draft?)
@@ -113,8 +139,10 @@
       
         (timbre/info "Processing change for mentions...")
         (let [old-body (-> msg-body :content :old :body)
-              mentions (mention/mention-parents new-body)
-              prior-mentions (mention/mention-parents old-body)
+              old-abstract (-> msg-body :content :old :abstract)
+              ;; Mentions will be deduped when calling new-mentions
+              prior-mentions (concat (mention/mention-parents old-body) (mention/mention-parents old-abstract))
+              mentions (concat (mention/mention-parents new-body) (mention/mention-parents new-abstract))
               new-mentions (mention/new-mentions prior-mentions mentions)]
 
           ;; If there are new mentions, we need to persist them
@@ -135,7 +163,7 @@
 
       ;; On the add of a comment, where the publisher isn't mentioned, notify the publisher (post author)
       (when (and comment? add?)
-        (timbre/info "Proccessing comment on a post...")
+        (timbre/info "Proccessing comment on a entry...")
         (let [publisher (:item-publisher msg-body)
               publisher-id (:user-id publisher)
               mentions (set (map :user-id (mention/new-mentions [] (mention/mention-parents new-body))))
@@ -151,6 +179,7 @@
                                                :org org
                                                :notification notification})))))
 
+      ;; On the add of a new reminder, create a notification and persist it
       (when (and reminder? add?)
         (timbre/info "Proccessing new reminder...")
         (let [reminder (:reminder msg-body)
@@ -239,7 +268,7 @@
 
   ;; Echo config information
   (println (str "\n"
-    (when c/intro? (str (slurp (java-io/resource "ascii_art.txt")) "\n"))
+    (when c/intro? (str (slurp (java-io/resource "oc/assets/ascii_art.txt")) "\n"))
     "OpenCompany Notify Service\n"))
   (echo-config port))
 
