@@ -57,9 +57,9 @@
 (defn- lambda-send-push-notifications!
   [push-notifs]
   (timbre/info "Sending push notifications: " push-notifs)
-  (-> (lambda/invoke-fn (str config/aws-lambda-expo-prefix "sendPushNotifications")
-                        {:notifications push-notifs})
-      lambda/parse-response))
+  (lambda/parse-response
+   (lambda/invoke-fn (str config/aws-lambda-expo-prefix "sendPushNotifications")
+                     {:notifications push-notifs})))
 
 ;; TODO: extract these hard-coded configuration strings out into config
 (defn send-push-notifications!
@@ -94,11 +94,11 @@
      :data      {}}])
 
   (def payload
-    (-> (send-push-notifications!
-         [{:pushToken "NOPE"
-           :body      "Hey there, this is Clojure!"
-           :data      {}}])
-        :payload))
+    (:payload
+     (send-push-notifications!
+      [{:pushToken "NOPE"
+        :body      "Hey there, this is Clojure!"
+        :data      {}}])))
 
   (def parsed-payload
     (json/parse-string
