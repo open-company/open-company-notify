@@ -1,10 +1,11 @@
 (ns oc.notify.lib.expo
-  (:require [oc.lib.lambda.common :as lambda]
-            [oc.lib.user :as user-lib]
-            [taoensso.timbre :as timbre]
+  (:require [amazonica.aws.sqs :as sqs]
             [cheshire.core :as json]
-            [amazonica.aws.sqs :as sqs]
-            [oc.notify.config :as config]))
+            [clojure.string :as cstr]
+            [oc.lib.lambda.common :as lambda]
+            [oc.lib.user :as user-lib]
+            [oc.notify.config :as config]
+            [taoensso.timbre :as timbre]))
 
 (defn notification-body
   [notification user]
@@ -13,7 +14,7 @@
         follow-up-data (when follow-up?
                          (:follow-up notification))
         author (:author notification)
-        first-name (or (:first-name author) (first (clojure.string/split (:name author) #"\s")))
+        first-name (or (:first-name author) (first (cstr/split (:name author) #"\s")))
         reminder (when reminder?
                    (:reminder notification))
         notification-type (when reminder?
@@ -31,7 +32,7 @@
       (str first-name " created a new reminder for you")
       (and reminder
            (= notification-type "reminder-alert"))
-      (str "Hi " (first (clojure.string/split (:name reminder-assignee) #"\s")) ", it's time to update your team")
+      (str "Hi " (first (cstr/split (:name reminder-assignee) #"\s")) ", it's time to update your team")
       (and (:mention? notification) (:interaction-id notification))
       (str first-name " mentioned you in a comment")
       (:mention? notification)
