@@ -4,8 +4,8 @@
 
   Use of this is through core/async. A message is sent to the `user-chan`.
   "
-  (:require [clojure.core.async :as async :refer [<! >!!]]
-            [defun.core :refer [defun-]]
+  (:require [clojure.core.async :as async :refer (<! >!!)]
+            [defun.core :refer (defun-)]
             [oc.lib.db.common :as db-common]
             [oc.lib.db.pool :as pool]
             [oc.notify.async.bot :as bot]
