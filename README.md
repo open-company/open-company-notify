@@ -93,8 +93,8 @@ For production, it is recommended you use Amazon DynamoDB in the cloud rather th
 
 #### Expo Push Notification Lambda Development
 
-The notify service is responsible for sending push notifications to mobile users. Currently we use [Expo's Push Notification service]() to accomplish this task. The only viable
-SDK for working with this service at the time of writing was the [expo-server-node-sdk](). Because of this, the notify service includes a [serverless]() project in the
+The notify service is responsible for sending push notifications to mobile users. Currently we use [Expo's Push Notification service](https://docs.expo.io/versions/latest/guides/push-notifications/) to accomplish this task. The only viable
+SDK for working with this service at the time of writing was the [expo-server-node-sdk](https://github.com/expo/expo-server-sdk-node). Because of this, the notify service includes a [serverless](https://github.com/serverless/serverless) project in the
 [expo-push-notifications](./expo-push-notifications) subfolder containing a few Lambda functions leveraging the SDK. When developing on these, it is useful to deploy experimental
 changes without disrupting staging/prod. To do so:
 
