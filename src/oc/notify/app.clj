@@ -161,7 +161,8 @@
                                                      :org org
                                                      :notification notification})))))))
 
-      ;; On the add of a comment, where the publisher isn't mentioned, notify the publisher (post author)
+      ;; On the add of a comment, where the user(s) to be notified (post author and authors of prior comments)
+      ;; aren't also mentioned (and therefore already notified), notify them
       (when (and comment? add?)
         (timbre/info "Proccessing comment on a entry...")
         (let [publisher (:item-publisher msg-body)
