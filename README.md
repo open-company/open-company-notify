@@ -91,6 +91,24 @@ cd /usr/local/dynamodb && java -Djava.library.path=DynamoDBLocal_lib -jar Dynamo
 
 For production, it is recommended you use Amazon DynamoDB in the cloud rather than DynamoDB Local. Follow the [instructions](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SettingUp.DynamoWebService.html) for setting up the cloud service in your AWS account.
 
+#### Expo Push Notification Lambda Development
+
+The notify service is responsible for sending push notifications to mobile users. Currently we use [Expo's Push Notification service](https://docs.expo.io/versions/latest/guides/push-notifications/) to accomplish this task. The only viable
+SDK for working with this service at the time of writing was the [expo-server-node-sdk](https://github.com/expo/expo-server-sdk-node). Because of this, the notify service includes a [serverless](https://github.com/serverless/serverless) project in the
+[expo-push-notifications](./expo-push-notifications) subfolder containing a few Lambda functions leveraging the SDK. When developing on these, it is useful to deploy experimental
+changes without disrupting staging/prod. To do so:
+
+```
+# Install serverless globally (one-time setup)
+npm install -g serverless
+
+cd expo-push-notifications
+serverless deploy --stage dev
+```
+
+This will output the name of a Lambda function, the prefix of which will be used in the following configuration. For example, if the created Lambda function is named
+`expo-push-notifications-dev-sendPushNotifications`, then the prefix would be `expo-push-notifications-dev-`.
+
 #### Required Secrets
 
 Make sure you update the section in `project.clj` that looks like this to contain your actual AWS secrets and SQS queue name:
@@ -103,6 +121,8 @@ Make sure you update the section in `project.clj` that looks like this to contai
     :aws-access-key-id "CHANGE-ME"
     :aws-secret-access-key "CHANGE-ME"
     :aws-sqs-notify-queue "CHANGE-ME"
+    :aws-sqs-expo-queue "CHANGE-ME"
+    :aws-lambda-expo-prefix "PREFIX-AS-EXPLAINED-ABOVE"""
   }
 ```
 
@@ -113,6 +133,13 @@ You will also need to subscribe the SQS queue to the storage and interaction SNS
 
 Go to the AWS SQS Console and select the change queue configured above. From the 'Queue Actions' dropdown, select 'Subscribe Queue to SNS Topic'. Select the SNS topic you've configured your Storage Service instance to publish to, and click the 'Subscribe' button. Repeat the process for the SNS topic you've configured your Interaction Service instance to publish to.
 
+The `aws-sqs-expo-queue` is read by auth directly to consume Expo push notification tickets produced by the notify service. These tickets are then
+exchanged for push notification receipts with the Expo server in order to determine if the pushes were successful. In the case that a push notification
+failed, it is the responsibility of the auth service to remove the invalid push tokens from the database. This can happen if the user uninstalls the mobile
+application, for example. Subsequent push notification attempts will fail, because the push token on record is no longer valid. **Expo recommends allowing
+30 minutes to pass before a ticket is exchanged for a receipt to allow the respective push services time to deal with high volume. Because of this, the SQS
+queue should be configured with a delay in production scenarios.** At the time or writing, the maximum queue delay allowed is 15 minutes, which is okay for our
+purposes.
 
 ## Usage
 
