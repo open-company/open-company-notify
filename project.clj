@@ -38,10 +38,10 @@
     ;; NB: encore pulled in from oc.lib
     [com.taoensso/faraday "1.10.0-alpha1" :exclusions [com.amazonaws/aws-java-sdk-dynamodb joda-time com.taoensso/encore]]
     ;; Faraday dependency, not pulled in? https://hc.apache.org/
-    [org.apache.httpcomponents/httpclient "4.5.9"]
+    [org.apache.httpcomponents/httpclient "4.5.10"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.17.15"]
+    [open-company/lib "0.17.16"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
