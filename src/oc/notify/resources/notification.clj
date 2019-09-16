@@ -25,7 +25,9 @@
   :reminder? schema/Bool
   (schema/optional-key :follow-up?) schema/Bool
   :author lib-schema/Author
-  schema/Keyword schema/Any})
+  schema/Keyword schema/Any
+  (schema/optional-key :url-path) schema/Str
+  })
 
 (def InteractionNotification (merge Notification {
   :board-id lib-schema/UniqueID
@@ -72,7 +74,8 @@
    :entry-id entry-id
    :entry-title (if (nil? entry-title) "post" entry-title)
    :secure-uuid secure-uuid
-   :author author})
+   :author author
+   :url-path (str "/" org-id "/" board-id "/post/" entry-id)})
 
 (schema/defn ^:always-validate ->ReminderNotification :- ReminderNotification
   [org-id reminder]
@@ -83,7 +86,8 @@
    :mention? false
    :reminder? true
    :follow-up? false
-   :author (:author reminder)})
+   :author (:author reminder)
+   :url-path (str "/" org-id)})
 
 (schema/defn ^:always-validate ->InteractionNotification :- InteractionNotification
   
@@ -107,12 +111,14 @@
     :mention? true
     :reminder? false
     :follow-up? false
-    :author author})
+    :author author
+    :url-path (str "/" org-id "/" board-id "/post/" entry-id)})
 
   ;; arity 8: a mention in a comment
   ([mention org-id board-id entry-id entry-title secure-id interaction-id :- lib-schema/UniqueID change-at author]
      (assoc (->InteractionNotification mention org-id board-id entry-id entry-title secure-id change-at author)
-    :interaction-id interaction-id))
+            :interaction-id interaction-id
+            :url-path (str "/" org-id "/" board-id "/post/" entry-id "/comment/" interaction-id)))
 
   ;; arity 9: a comment on a post
   ([entry-publisher :- lib-schema/Author
@@ -136,7 +142,8 @@
     :content comment-body
     :mention? false
     :reminder? false
-    :author author})
+    :author author
+    :url-path (str "/" org-id "/" board-id "/post/" entry-id "/comment/" interaction-id)})
 
   ;; arity 10: a comment on a post not for the post author
   ([entry-publisher :- lib-schema/Author
@@ -162,7 +169,8 @@
     :content comment-body
     :mention? false
     :reminder? false
-    :author author}))
+    :author author
+    :url-path (str "/" org-id "/" board-id "/post/" entry-id "/comment/" interaction-id)}))
 
 ;; ----- DB Operations -----
 
