@@ -58,7 +58,26 @@
 
 (defn join-path
   [& strs]
-  (str "/" (cstr/join "/" strs)))
+  (let [path (cstr/join "/" strs)]
+    (if (cstr/starts-with? path "/")
+      path
+      (str "/" path))))
+
+(defn org-path
+  [org-id]
+  (join-path org-id))
+
+(defn board-path
+  [org-id board-id]
+  (join-path (org-path org-id) board-id))
+
+(defn entry-path
+  [org-id board-id entry-id]
+  (join-path (board-path org-id board-id) "post" entry-id))
+
+(defn interaction-path
+  [org-id board-id entry-id interaction-id]
+  (join-path (entry-path org-id board-id entry-id) "comment" interaction-id))
 
 (schema/defn ^:always-validate ->FollowUpNotification :- FollowUpNotification
   [org-id :- lib-schema/UniqueID
@@ -80,7 +99,7 @@
    :entry-title (if (nil? entry-title) "post" entry-title)
    :secure-uuid secure-uuid
    :author author
-   :url-path (join-path org-id board-id "post" entry-id)})
+   :url-path (entry-path org-id board-id entry-id)})
 
 (schema/defn ^:always-validate ->ReminderNotification :- ReminderNotification
   [org-id reminder]
@@ -92,7 +111,7 @@
    :reminder? true
    :follow-up? false
    :author (:author reminder)
-   :url-path (join-path org-id)})
+   :url-path (org-path org-id)})
 
 (schema/defn ^:always-validate ->InteractionNotification :- InteractionNotification
   
@@ -117,13 +136,13 @@
     :reminder? false
     :follow-up? false
     :author author
-    :url-path (join-path org-id board-id "post" entry-id)})
+    :url-path (entry-path org-id board-id entry-id)})
 
   ;; arity 8: a mention in a comment
   ([mention org-id board-id entry-id entry-title secure-id interaction-id :- lib-schema/UniqueID change-at author]
      (assoc (->InteractionNotification mention org-id board-id entry-id entry-title secure-id change-at author)
             :interaction-id interaction-id
-            :url-path (join-path org-id board-id "post" entry-id "comment" interaction-id)))
+            :url-path (interaction-path org-id board-id entry-id interaction-id)))
 
   ;; arity 9: a comment on a post
   ([entry-publisher :- lib-schema/Author
@@ -148,7 +167,7 @@
     :mention? false
     :reminder? false
     :author author
-    :url-path (join-path org-id board-id "post" entry-id "comment" interaction-id)})
+    :url-path (interaction-path org-id board-id entry-id interaction-id)})
 
   ;; arity 10: a comment on a post not for the post author
   ([entry-publisher :- lib-schema/Author
@@ -175,7 +194,7 @@
     :mention? false
     :reminder? false
     :author author
-    :url-path (join-path org-id board-id "post" entry-id "comment" interaction-id)}))
+    :url-path (interaction-path org-id board-id entry-id interaction-id)}))
 
 ;; ----- DB Operations -----
 
