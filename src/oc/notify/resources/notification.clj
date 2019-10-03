@@ -2,6 +2,7 @@
   "Store notification details with a TTL"
   (:require [taoensso.faraday :as far]
             [schema.core :as schema]
+            [oc.lib.html :as lib-html]
             [oc.lib.schema :as lib-schema]
             [oc.notify.config :as c]
             [oc.lib.dynamo.common :as ttl]
@@ -198,19 +199,24 @@
 
 ;; ----- DB Operations -----
 
+(defn transform-notification
+  [notification-data]
+  (update notification-data :body lib-html/sanitize-html))
+
 (schema/defn ^:always-validate store!
   [notification :- Notification]
-  (far/put-item c/dynamodb-opts table-name
-    (assoc
-      (clojure.set/rename-keys notification {
-        :user-id :user_id
-        :board-id :board_id
-        :entry-id :entry_id
-        :secure-uuid :secure_uuid
-        :interaction-id :interaction_id
-        :notify-at :notify_at})
-      :ttl (ttl/ttl-epoch c/notification-ttl)
-      ))
+  (let [notification* (transform-notification notification)]
+    (far/put-item c/dynamodb-opts table-name
+      (assoc
+        (clojure.set/rename-keys notification* {
+          :user-id :user_id
+          :board-id :board_id
+          :entry-id :entry_id
+          :secure-uuid :secure_uuid
+          :interaction-id :interaction_id
+          :notify-at :notify_at})
+        :ttl (ttl/ttl-epoch c/notification-ttl)
+        )))
   true)
 
 (schema/defn ^:always-validate retrieve :- [Notification]
