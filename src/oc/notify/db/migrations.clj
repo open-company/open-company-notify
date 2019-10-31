@@ -23,7 +23,7 @@
   ;; Run the migrations
   (println "\nRunning migrations.")
   (run-migrations dynamodb-opts migrations-dir
-    (filter #(s/ends-with? % ".edn") (file-seq (java-io/file migrations-dir))))
+    (sort (filter #(s/ends-with? % ".edn") (file-seq (java-io/file migrations-dir)))))
   (println "Migrations complete.")
   (System/exit 0)) ; gets hung when running Faraday commands in migrations, so force an exit
 
