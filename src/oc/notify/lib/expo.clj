@@ -55,11 +55,51 @@
       :else
       nil)))
 
+(defn notification-title
+  [notification user]
+  (let [reminder?         (:reminder? notification)
+        follow-up?        (:follow-up? notification)
+        follow-up-data    (when follow-up?
+                            (:follow-up notification))
+        ;; reminder          (when reminder?
+        ;;                     (:reminder notification))
+        ;; notification-type (when reminder?
+        ;;                     (:notification-type reminder))
+        ;; reminder-assignee (when reminder?
+        ;;                     (:assignee reminder))
+        ]
+    (cond
+      (and follow-up?
+           follow-up-data
+           (not= (-> follow-up-data :author :user-id) (:user-id user))
+           (not (:completed? follow-up-data)))
+      (:entry-title notification)
+
+      ;; TODO: titles for reminders?
+      ;; (and reminder
+      ;;      (= notification-type "reminder-notification"))
+      ;; (str first-name " created a new reminder for you")
+      ;; (and reminder
+      ;;      (= notification-type "reminder-alert"))
+      ;; (str "Hi " (first (cstr/split (:name reminder-assignee) #"\s")) ", it's time to update your team")
+
+      (and (:mention? notification) (:interaction-id notification))
+      (:entry-title notification)
+
+      (:mention? notification)
+      (:entry-title notification)
+
+      (:interaction-id notification)
+      (:entry-title notification)
+      :else
+      nil)))
+
 (defn ->push-notification
   [notification user push-token]
   (when-let [body (notification-body notification user)]
     {:pushToken push-token
      :body      body
+     :title     (notification-title notification user)
      :data      notification}))
 
 (defn ->push-notifications
