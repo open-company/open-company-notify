@@ -201,7 +201,8 @@
 
 (defn transform-notification
   [notification-data]
-  (update notification-data :content lib-html/sanitize-html))
+  (cond-> notification-data
+    (:content notification-data) (update :content lib-html/sanitize-html)))
 
 (schema/defn ^:always-validate store!
   [notification :- Notification]
