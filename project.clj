@@ -112,6 +112,7 @@
         :aws-sqs-email-queue "CHANGE-ME"
         :aws-sqs-bot-queue "CHANGE-ME"
         :aws-sqs-notify-queue "CHANGE-ME"
+        :aws-sqs-storage-queue "CHANGE-ME"
         :log-level "debug"
       }
       :plugins [

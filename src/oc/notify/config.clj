@@ -62,6 +62,7 @@
 (defonce aws-sqs-email-queue (env :aws-sqs-email-queue))
 (defonce aws-sqs-bot-queue (env :aws-sqs-bot-queue))
 (defonce aws-sqs-notify-queue (env :aws-sqs-notify-queue))
+(defonce aws-sqs-storage-queue (env :aws-sqs-storage-queue))
 (defonce aws-sqs-expo-queue (env :aws-sqs-expo-queue))
 
 

@@ -24,6 +24,7 @@
     [oc.notify.config :as c]
     [oc.notify.api.websockets :as websockets-api]
     [oc.notify.async.persistence :as persistence]
+    [oc.notify.async.storage :as storage-notification]
     [oc.notify.lib.mention :as mention]
     [oc.notify.lib.follow-up :as follow-up]
     [oc.notify.resources.notification :as notification]
@@ -143,8 +144,19 @@
               ;; Mentions will be deduped when calling new-mentions
               prior-mentions (concat (mention/mention-parents old-body) (mention/mention-parents old-abstract))
               mentions (concat (mention/mention-parents new-body) (mention/mention-parents new-abstract))
-              new-mentions (mention/new-mentions prior-mentions mentions)]
-
+              new-mentions (mention/new-mentions prior-mentions mentions)
+              comment-add? (and comment? add?)
+              users-for-follow* (mention/users-from-mentions mentions)
+              publisher-user (when comment-add?
+                               (select-keys (:item-publisher msg-body) [:user-id :name :avatar-url]))
+              users-for-follow (if comment-add?
+                                 (mapv first (vals
+                                  (group-by :user-id (conj users-for-follow* publisher-user))))
+                                 users-for-follow*)]
+          ;; Add follow for all mentioned users (no need to diff from the old, we will override the follow if present)
+          (when (not-empty users-for-follow)
+            (timbre/info "Requesting follow for" (count users-for-follow) "mention(s)" (if comment-add? " and comment author" ""))
+            (storage-notification/send-trigger! (storage-notification/->trigger "follow" entry-id users-for-follow)))
           ;; If there are new mentions, we need to persist them
           (when (not-empty new-mentions)
             (timbre/info "Requesting persistence for" (count new-mentions) "mention(s).")
@@ -239,6 +251,7 @@
     "AWS SQS email queue: " c/aws-sqs-email-queue "\n"
     "AWS SQS bot queue: " c/aws-sqs-bot-queue "\n"
     "AWS SQS notify queue: " c/aws-sqs-notify-queue "\n"
+    "AWS SQS storage queue: " c/aws-sqs-storage-queue "\n"
     "Hot-reload: " c/hot-reload "\n"
     "Ensure origin: " c/ensure-origin "\n"
     "Sentry: " c/dsn "\n\n"
