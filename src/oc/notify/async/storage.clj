@@ -11,7 +11,7 @@
   "All Storage triggers have the following properties."
   {
     :type (schema/enum "inbox-action")
-    :sub-type (schema/enum "follow" "unfollow" "dismiss")
+    :sub-type (schema/enum "follow" "unfollow" "dismiss" "comment-add")
     :item-id lib-schema/UniqueID
     :users [lib-schema/User]
     (schema/optional-key :dismiss-at) lib-schema/ISO8601

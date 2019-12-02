@@ -186,6 +186,9 @@
               notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                    entry-title secure-uuid interaction-id
                                                                    change-at author publisher)]
+          ;; Send a comment-add notification to storage to alert the clients to refresh thir inbox
+          (timbre/info "Sending comment-add notification to Storage for" entry-id)
+          (storage-notification/send-trigger! (storage-notification/->trigger "comment-add" entry-id [(select-keys (:item-publisher msg-body) [:user-id :name :avatar-url])]))
           (doseq [user notify-users-without-mentions]
             (let [notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                              entry-title secure-uuid interaction-id
