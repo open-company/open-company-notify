@@ -106,7 +106,9 @@
           new-body (-> msg-body :content :new :body)
           new-abstract (-> msg-body :content :new :abstract)
           author-id (:user-id author)
-          user-id (:user-id author)]
+          user-id (:user-id author)
+          comment-author (when (and comment? add?)
+                           (-> msg-body :content :new :author))]
     
       (timbre/info "Received message from SQS:" msg-body)
 
@@ -138,7 +140,7 @@
              (or add? update?)
              (or entry? comment?))
       
-        (timbre/info "Processing change for mentions...")
+        (timbre/info "Processing change for mentions and inbox follows...")
         (let [old-body (-> msg-body :content :old :body)
               old-abstract (-> msg-body :content :old :abstract)
               ;; Mentions will be deduped when calling new-mentions
@@ -147,11 +149,11 @@
               new-mentions (mention/new-mentions prior-mentions mentions)
               comment-add? (and comment? add?)
               users-for-follow* (mention/users-from-mentions mentions)
-              publisher-user (when comment-add?
-                               (select-keys (:item-publisher msg-body) [:user-id :name :avatar-url]))
               users-for-follow (if comment-add?
+                                 ;; In case of comment add let's add the comment author
+                                 ;; to the list that needs to follow the current post
                                  (mapv first (vals
-                                  (group-by :user-id (conj users-for-follow* publisher-user))))
+                                  (group-by :user-id (conj users-for-follow* comment-author))))
                                  users-for-follow*)]
           ;; Add follow for all mentioned users (no need to diff from the old, we will override the follow if present)
           (when (not-empty users-for-follow)
@@ -188,7 +190,7 @@
                                                                    change-at author publisher)]
           ;; Send a comment-add notification to storage to alert the clients to refresh thir inbox
           (timbre/info "Sending comment-add notification to Storage for" entry-id)
-          (storage-notification/send-trigger! (storage-notification/->trigger "comment-add" entry-id [(select-keys (:item-publisher msg-body) [:user-id :name :avatar-url])]))
+          (storage-notification/send-trigger! (storage-notification/->trigger "comment-add" entry-id [comment-author]))
           (doseq [user notify-users-without-mentions]
             (let [notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                              entry-title secure-uuid interaction-id
