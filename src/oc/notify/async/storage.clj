@@ -1,7 +1,6 @@
 (ns oc.notify.async.storage
   "Publish Slack bot triggers to AWS SQS."
-  (:require [if-let.core :refer (when-let*)]
-            [amazonica.aws.sqs :as sqs]
+  (:require [amazonica.aws.sqs :as sqs]
             [taoensso.timbre :as timbre]
             [schema.core :as schema]
             [oc.lib.schema :as lib-schema]
