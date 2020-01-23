@@ -4,7 +4,8 @@
     [clojure.string :as s]
     [hickory.core :as html]
     [hickory.select :as sel]
-    [hickory.render :as render]))
+    [hickory.render :as render]
+    [oc.lib.user :as user]))
 
 (defn- wrap-in-div [html]
   (if html (str "<div>" (s/trim html) "</div>") "<div></div>"))
@@ -42,6 +43,15 @@
                   (sel/class :oc-mention)
                   (sel/attr :data-found #(= % "true")))))
     tree))
+
+(defn users-from-mentions [mentions]
+  (map (fn [u]
+         (let [user-name (user/name-for {:first-name (-> u :mention :attrs :data-first-name)
+                                         :last-name (-> u :mention :attrs :data-last-name)})]
+           (hash-map :user-id (:user-id u)
+                     :name user-name
+                     :avatar-url (-> u :mention :attrs :data-avatar-url))))
+    (mapcat parts-for mentions)))
 
 (defn mention-parents
   "
