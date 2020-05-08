@@ -51,7 +51,7 @@
       (:mention? notification)
       (str first-name " mentioned you:\n" extra-content)
       (:interaction-id notification)
-      (str first-name " commented on your post:\n" extra-content)
+      (str first-name " added a comment:\n" extra-content)
       :else
       nil)))
 
