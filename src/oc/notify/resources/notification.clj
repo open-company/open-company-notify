@@ -37,6 +37,7 @@
   (schema/optional-key :entry-title) schema/Str
   :secure-uuid lib-schema/UniqueID
   (schema/optional-key :interaction-id) lib-schema/UniqueID
+  (schema/optional-key :parent-interaction-id) (schema/maybe lib-schema/UniqueID)
   :content lib-schema/NonBlankStr
   (schema/optional-key :entry-publisher) lib-schema/Author
   :mention? schema/Bool
@@ -140,9 +141,11 @@
     :url-path (entry-path org-id board-id entry-id)})
 
   ;; arity 8: a mention in a comment
-  ([mention org-id board-id entry-id entry-title secure-id interaction-id :- lib-schema/UniqueID change-at author]
+  ([mention org-id board-id entry-id entry-title secure-id interaction-id :- lib-schema/UniqueID
+    parent-interaction-id :- (schema/maybe lib-schema/UniqueID) change-at author]
      (assoc (->InteractionNotification mention org-id board-id entry-id entry-title secure-id change-at author)
             :interaction-id interaction-id
+            :parent-interaction-id parent-interaction-id
             :url-path (interaction-path org-id board-id entry-id interaction-id)))
 
   ;; arity 9: a comment on a post
@@ -154,6 +157,7 @@
    entry-title
    secure-uuid :- lib-schema/UniqueID
    interaction-id :- lib-schema/UniqueID
+   parent-interaction-id :- (schema/maybe lib-schema/UniqueID)
    change-at :- lib-schema/ISO8601
    author :- lib-schema/Author]
    {:user-id (:user-id entry-publisher)
@@ -163,6 +167,7 @@
     :entry-title (if (nil? entry-title) "comment" entry-title)
     :secure-uuid secure-uuid
     :interaction-id interaction-id
+    :parent-interaction-id parent-interaction-id
     :notify-at change-at
     :content comment-body
     :mention? false
@@ -179,6 +184,7 @@
    entry-title
    secure-uuid :- lib-schema/UniqueID
    interaction-id :- lib-schema/UniqueID
+   parent-interaction-id :- (schema/maybe lib-schema/UniqueID)
    change-at :- lib-schema/ISO8601
    author :- lib-schema/Author
    user :- lib-schema/Author]
@@ -190,6 +196,7 @@
     :entry-title (if (nil? entry-title) "comment" entry-title)
     :secure-uuid secure-uuid
     :interaction-id interaction-id
+    :parent-interaction-id parent-interaction-id
     :notify-at change-at
     :content comment-body
     :mention? false
@@ -215,6 +222,7 @@
           :entry-id :entry_id
           :secure-uuid :secure_uuid
           :interaction-id :interaction_id
+          :parent-interaction-id :parent_interaction_id
           :notify-at :notify_at})
         :ttl (ttl/ttl-epoch c/notification-ttl)
         )))
@@ -234,6 +242,7 @@
         :entry_id :entry-id
         :secure_uuid :secure-uuid
         :interaction_id :interaction-id
+        :parent_interaction_id :parent-interaction-id
         :notify_at :notify-at}))
       (map #(dissoc % :ttl))))
 

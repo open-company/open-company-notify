@@ -97,6 +97,7 @@
                           (or (-> msg-body :content :new :secure-uuid) ; post new or update
                               (-> msg-body :content :old :secure-uuid))) ; post delete
           interaction-id (when comment? (-> msg-body :content :new :uuid))
+          parent-interaction-id (when comment? (-> msg-body :content :new :parent-uuid))
           change-at (or (-> msg-body :content :new :updated-at) ; add / update
                         (:notification-at msg-body)) ; delete
           draft? (or (= board-id draft-board-uuid)
@@ -168,7 +169,7 @@
                 (let [notification (if comment?
                                      (notification/->InteractionNotification mention org-id board-id entry-id
                                                                              entry-title secure-uuid interaction-id
-                                                                             change-at author)
+                                                                             parent-interaction-id change-at author)
                                      (notification/->InteractionNotification mention org-id board-id entry-id
                                                                              entry-title secure-uuid change-at author))]
                   (>!! persistence/persistence-chan {:notify true
@@ -187,14 +188,14 @@
               notify-users-without-mentions (filter (fn [user] (not-any? #(= % (:user-id user)) mentions)) notify-users)
               notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                    entry-title secure-uuid interaction-id
-                                                                   change-at author publisher)]
+                                                                   parent-interaction-id change-at author publisher)]
           ;; Send a comment-add notification to storage to alert the clients to refresh thir inbox
           (timbre/info "Sending comment-add notification to Storage for" entry-id)
           (storage-notification/send-trigger! (storage-notification/->trigger "comment-add" entry-id [comment-author]))
           (doseq [user notify-users-without-mentions]
             (let [notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                              entry-title secure-uuid interaction-id
-                                                                             change-at author user)]
+                                                                             parent-interaction-id change-at author user)]
                 (>!! persistence/persistence-chan {:notify true
                                                    :org org
                                                    :notification notification})))
