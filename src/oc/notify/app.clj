@@ -204,8 +204,8 @@
             (if publisher-mentioned?
               (timbre/info "Skipping comment notification due to prior mention notification.")
               (>!! persistence/persistence-chan {:notify true
-                                               :org org
-                                               :notification notification})))))
+                                                 :org org
+                                                 :notification notification})))))
 
       ;; On the add of a new reminder, create a notification and persist it
       (when (and reminder? add?)
@@ -215,6 +215,18 @@
           (>!! persistence/persistence-chan {:notify true
                                              :org org
                                              :notification notification})))
+
+      ;; On activity delete:
+      (when (and entry? delete?)
+        (>!! persistence/persistence-chan {:delete-entry true
+                                           :entry-uuid entry-id
+                                           :board-id board-id}))
+
+      (when (and comment? delete?)
+        (>!! persistence/persistence-chan {:delete-interaction true
+                                           :interaction-id interaction-id
+                                           :entry-uuid entry-id
+                                           :board-id board-id}))
 
       ;; Draft, org, board, or unknown
       (cond

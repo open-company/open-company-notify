@@ -228,6 +228,26 @@
         )))
   true)
 
+(schema/defn ^:always-validate delete-by-entry!
+  [entry-id :- lib-schema/UniqueID board-id :- lib-schema/UniqueID]
+  ; (far/query table-name {:index (org-slug-publisher-followers-gsi-name dynamodb-opts)
+  ;                                  :filter-expr "contains(#k, :v)"
+  ;                                  :expr-attr-names {"#k" "follower_uuids"}
+  ;                                  :expr-attr-vals {":v" user-id}})
+  )
+
+(schema/defn ^:always-validate delete-by-interaction!
+  [interaction-id :- lib-schema/UniqueID entry-id :- lib-schema/UniqueID board-id :- lib-schema/UniqueID]
+  ; (far/query table-name {:index (org-slug-publisher-followers-gsi-name dynamodb-opts)
+  ;                                  :filter-expr "contains(#k, :v)"
+  ;                                  :expr-attr-names {"#k" "follower_uuids"}
+  ;                                  :expr-attr-vals {":v" user-id}})
+  (let [items (far/scan config/dynamodb-opts table-name {:filter-expr "#ke=:ve and #kb=:vb"
+                                                         :expr-attr-names {"#ke" "entry_id" "#kb" "board_id"}
+                                                         :expr-attr-vals {":ve" entry-id ":vb" board-id}})]
+    (doseq [item items]
+      (far/delete-item config/dynamodb-opts table-name [:notify_at]))))
+
 (schema/defn ^:always-validate retrieve :- [Notification]
   [user-id :- lib-schema/UniqueID]
   ;; Filter out TTL records as TTL expiration doesn't happen with local DynamoDB,

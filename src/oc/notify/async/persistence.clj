@@ -60,6 +60,19 @@
                          :user-id user-id
                          :org (:org message)})))
 
+  ;; DELETES
+
+  ([message :guard :delete-entry]
+   (let [entry-uuid (:entry-uuid message)
+         board-id (:board-id message)]
+     (notification/delete-by-entry! entry-uuid board-id)))
+
+  ([message :guard :delete-interaction]
+   (let [interaction-id (:interaction-id message)
+         entry-uuid (:entry-uuid message)
+         board-id (:board-id message)]
+     (notification/delete-by-interaction! interaction-id entry-uuid board-id)))
+
   ([message]
   (timbre/warn "Unknown request in persistence channel" message)))
 
