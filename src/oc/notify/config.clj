@@ -53,6 +53,7 @@
 (defonce hot-reload (bool (or (env :hot-reload) false)))
 (defonce notify-server-port (Integer/parseInt (or (env :port) "3010")))
 (defonce ensure-origin (bool (or (env :oc-ws-ensure-origin) true)))
+(defonce ui-server-url (or (env :ui-server-url) "http://localhost:3559"))
 
 ;; ----- AWS SQS -----
 

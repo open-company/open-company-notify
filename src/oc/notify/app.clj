@@ -271,7 +271,7 @@
     true              wrap-keyword-params
     true              wrap-params
     true              (wrap-cors #".*")
-    c/ensure-origin   wrap-ensure-origin
+    c/ensure-origin   (wrap-ensure-origin c/ui-server-url)
     c/hot-reload      wrap-reload))
 
 (defn start

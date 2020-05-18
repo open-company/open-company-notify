@@ -41,7 +41,7 @@
     [org.apache.httpcomponents/httpclient "4.5.11"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.17.25.2"]
+    [open-company/lib "0.17.29-alpha14"]
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
@@ -105,7 +105,7 @@
       :env ^:replace {
         :db-name "open_company_auth_dev"
         :hot-reload "true"
-        :oc-ws-ensure-origin "false" ; local
+        :oc-ws-ensure-origin "true" ; local
         :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
         :aws-access-key-id "CHANGE-ME"
         :aws-secret-access-key "CHANGE-ME"
@@ -179,10 +179,11 @@
     "build" ["do" "clean," "deps," "compile"] ; clean and build code
     "create-migration" ["run" "-m" "oc.notify.db.migrations" "create"] ; create a data migration
     "migrate-db" ["run" "-m" "oc.notify.db.migrations" "migrate"] ; run pending data migrations
-    "start" ["do" "run"] ; start a development server
-    "start!" ["with-profile" "prod" "do" "start"] ; start a server in production
-    "autotest" ["with-profile" "qa" "do" "midje" ":autotest"] ; watch for code changes and run affected tests
-    "test!" ["with-profile" "qa" "do" "clean," "build," "midje"] ; run all tests
+    "start*" ["do" "migrate-db," "run"] ; start the service
+    "start" ["with-profile" "dev" "do" "start*"] ; start a development server
+    "start!" ["with-profile" "prod" "do" "start*"] ; start a server in production
+    "autotest" ["with-profile" "qa" "do" "migrate-db," "midje" ":autotest"] ; watch for code changes and run affected tests
+    "test!" ["with-profile" "qa" "do" "clean," "build," "migrate-db," "midje"] ; run all tests
     "repl" ["with-profile" "+repl-config" "repl"]
     "spell!" ["spell" "-n"] ; check spelling in docs and docstrings
     "bikeshed!" ["bikeshed" "-v" "-m" "120"] ; code check with max line length warning of 120 characters
