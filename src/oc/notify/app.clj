@@ -260,13 +260,19 @@
     "AWS SQS storage queue: " c/aws-sqs-storage-queue "\n"
     "Hot-reload: " c/hot-reload "\n"
     "Ensure origin: " c/ensure-origin "\n"
-    "Sentry: " c/dsn "\n\n"
+    "Sentry: " c/dsn "\n"
+    "  env: " c/sentry-env "\n"
+    (when-not (clojure.string/blank? c/sentry-release)
+      (str "  release: " c/sentry-release "\n"))
+    "\n"
     (when c/intro? "Ready to serve...\n"))))
 
 ;; Ring app definition
 (defn app [sys]
   (cond-> (routes sys)
-    c/dsn             (sentry-mw/wrap-sentry c/dsn) ; important that this is first
+    ; important that this is first
+    c/dsn             (sentry-mw/wrap-sentry c/dsn {:environment c/sentry-env
+                                                    :release c/sentry-release})
     true              wrap-with-logger
     true              wrap-keyword-params
     true              wrap-params
@@ -282,7 +288,8 @@
   (if c/dsn
     (timbre/merge-config!
       {:level (keyword c/log-level)
-       :appenders {:sentry (sa/sentry-appender c/dsn)}})
+       :appenders {:sentry (sa/sentry-appender c/dsn {:environment c/sentry-env
+                                                      :release c/sentry-release})}})
     (timbre/merge-config! {:level (keyword c/log-level)}))
 
   ;; Start the system
