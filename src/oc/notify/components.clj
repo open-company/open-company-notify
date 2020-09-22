@@ -29,7 +29,7 @@
         (http-kit)
         (websockets-api/stop)
         (timbre/info "[http] stopped")
-        (dissoc component :http-kit))
+        (assoc component :http-kit nil))
       component)))
 
 (defrecord RethinkPool [size regenerate-interval pool]
@@ -44,7 +44,7 @@
     (if pool
       (do
         (pool/shutdown-pool! pool)
-        (dissoc component :pool))
+        (assoc component :pool nil))
       component)))
 
 (defrecord Handler [handler-fn]
@@ -56,7 +56,7 @@
 
   (stop [component]
     (timbre/info "[handler] stopped")
-    (dissoc component :handler)))
+    (assoc component :handler nil)))
 
 (defrecord AsyncConsumers [db-pool]
   component/Lifecycle
@@ -77,7 +77,7 @@
         (user/stop) ; core.async channel consumer for looking up users
         (watcher/stop) ; core.async channel consumer for watched items (containers watched by websockets) events
         (timbre/info "[async-consumers] stopped")
-        (dissoc component :async-consumers))
+        (assoc component :async-consumers nil))
     component)))
 
 (defn notify-system [{:keys [httpkit sqs-consumer sentry]}]
