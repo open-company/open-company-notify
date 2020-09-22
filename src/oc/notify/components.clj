@@ -2,6 +2,7 @@
   (:require [com.stuartsierra.component :as component]
             [taoensso.timbre :as timbre]
             [org.httpkit.server :as httpkit]
+            [oc.lib.sentry.core :refer (map->SentryCapturer)]
             [oc.lib.db.pool :as pool]
             [oc.lib.sqs :as sqs]
             [oc.lib.async.watcher :as watcher]
@@ -79,16 +80,21 @@
         (dissoc component :async-consumers))
     component)))
 
-(defn notify-system [{:keys [httpkit sqs-consumer]}]
+(defn notify-system [{:keys [httpkit sqs-consumer sentry]}]
   (component/system-map
-    :db-pool (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})
+    :sentry-capturer (map->SentryCapturer sentry)
+    :db-pool (component/using
+              (map->RethinkPool {:size c/db-pool-size :regenerate-interval 5})
+              [:sentry-capturer])
     :async-consumers (component/using
                         (map->AsyncConsumers {})
                         [:db-pool])
-    :sqs-consumer (sqs/sqs-listener sqs-consumer)
+    :sqs-consumer (component/using
+                   (sqs/sqs-listener sqs-consumer)
+                   [:sentry-capturer])
     :handler (component/using
                 (map->Handler {:handler-fn (:handler-fn httpkit)})
-                [])
+                [:sentry-capturer])
     :server  (component/using
                 (map->HttpKit {:options {:port (:port httpkit)}})
                 [:handler])))

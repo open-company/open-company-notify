@@ -5,9 +5,7 @@
     [clojure.core.async :as async :refer (>!!)]
     [clojure.walk :as cw]
     [clojure.java.io :as java-io]
-    [raven-clj.core :as sentry]
-    [raven-clj.interfaces :as sentry-interfaces]
-    [raven-clj.ring :as sentry-mw]
+    [oc.lib.sentry.core :as sentry]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
     [ring.logger.timbre :refer (wrap-with-logger)]
@@ -17,7 +15,6 @@
     [ring.middleware.cors :refer (wrap-cors)]
     [compojure.core :as compojure :refer (GET)]
     [com.stuartsierra.component :as component]
-    [oc.lib.sentry-appender :as sa]
     [oc.lib.schema :as lib-schema]
     [oc.lib.sqs :as sqs]
     [oc.notify.components :as components]
@@ -31,19 +28,6 @@
     [oc.lib.middleware.wrap-ensure-origin :refer (wrap-ensure-origin)]))
 
 (def draft-board-uuid "0000-0000-0000")
-
-;; ----- Unhandled Exceptions -----
-
-;; Send unhandled exceptions to log and Sentry
-;; See https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
-(Thread/setDefaultUncaughtExceptionHandler
- (reify Thread$UncaughtExceptionHandler
-   (uncaughtException [_ thread ex]
-     (timbre/error ex "Uncaught exception on" (.getName thread) (.getMessage ex))
-     (when c/dsn
-       (sentry/capture c/dsn (-> {:message (.getMessage ex)}
-                                 (assoc-in [:extra :exception-data] (ex-data ex))
-                                 (sentry-interfaces/stacktrace ex)))))))
 
 ;; ----- SQS Incoming Request -----
 
@@ -271,8 +255,7 @@
 (defn app [sys]
   (cond-> (routes sys)
     ; important that this is first
-    c/dsn             (sentry-mw/wrap-sentry c/dsn {:environment c/sentry-env
-                                                    :release c/sentry-release})
+    c/dsn             (sentry/wrap sys)
     true              wrap-with-logger
     true              wrap-keyword-params
     true              wrap-params
@@ -288,11 +271,12 @@
   (if c/dsn
     (timbre/merge-config!
       {:level (keyword c/log-level)
-       :appenders {:sentry (sa/sentry-appender c/dsn)}})
+       :appenders {:sentry (sentry/sentry-appender c/sentry-config)}})
     (timbre/merge-config! {:level (keyword c/log-level)}))
 
   ;; Start the system
   (-> {:httpkit {:handler-fn app :port port}
+       :sentry c/sentry-config
        :sqs-consumer {
           :sqs-queue c/aws-sqs-notify-queue
           :message-handler sqs-handler
