@@ -62,13 +62,15 @@
   (doseq [body (sqs/read-message-body (:body msg))]
     (let [msg-body (or (cw/keywordize-keys (json/parse-string (:Message body))) body)
           change-type (keyword (:notification-type msg-body))
-          add? (= change-type :add)
+          add? (or (= change-type :add)
+                   (= change-type :comment-add))
           update? (= change-type :update)
           delete? (= change-type :delete)
           resource-type (keyword (:resource-type msg-body))
           entry? (= resource-type :entry)
           comment? (= resource-type :comment)
           reminder? (= resource-type :reminder)
+          comment-add? (and comment? add?)
           org (:org msg-body)
           org-id (:uuid org)
           board-id (or (-> msg-body :board :uuid)
@@ -94,9 +96,7 @@
           user-id (:user-id author)
           comment-author (when (and comment? add?)
                            (-> msg-body :content :new :author))]
-    
       (timbre/info "Received message from SQS:" msg-body)
-
       ;; On an add/update of an entry, look for new follow-ups
       (when (and
              entry?
@@ -132,7 +132,6 @@
               prior-mentions (concat (mention/mention-parents old-body) (mention/mention-parents old-abstract))
               mentions (concat (mention/mention-parents new-body) (mention/mention-parents new-abstract))
               new-mentions (mention/new-mentions prior-mentions mentions)
-              comment-add? (and comment? add?)
               users-for-follow* (mention/users-from-mentions mentions)
               users-for-follow (if comment-add?
                                  ;; In case of comment add let's add the comment author
@@ -163,7 +162,7 @@
       ;; On the add of a comment, where the user(s) to be notified (post author and authors of prior comments)
       ;; aren't also mentioned (and therefore already notified), notify them
       (when (and comment? add?)
-        (timbre/info "Proccessing comment on a entry...")
+        (timbre/info "Proccessing a new comment...")
         (let [publisher (:item-publisher msg-body)
               publisher-id (:user-id publisher)
               mentions (set (map :user-id (mention/new-mentions [] (mention/mention-parents new-body))))
