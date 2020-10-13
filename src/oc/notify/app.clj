@@ -31,6 +31,12 @@
 
 ;; ----- SQS Incoming Request -----
 
+(defn- user-allowed? [user-id msg-body]
+  (let [board-access (:board-access msg-body)
+        allowed-users (:allowed-users msg-body)]
+    (or (not= board-access "private")
+        ((set allowed-users) user-id))))
+
 (defn sqs-handler
   "
   Handle an incoming SQS message to the notify service.
@@ -146,18 +152,24 @@
           ;; If there are new mentions, we need to persist them
           (when (not-empty new-mentions)
             (timbre/info "Requesting persistence for" (count new-mentions) "mention(s).")
-            (doseq [mention new-mentions]
-              (if (= (:user-id mention) author-id) ; check for a self-mention
-                (timbre/info "Skipping notification creation for self-mention.")
-                (let [notification (if comment?
-                                     (notification/->InteractionNotification mention org-id board-id entry-id
-                                                                             entry-title secure-uuid interaction-id
-                                                                             parent-interaction-id change-at author)
-                                     (notification/->InteractionNotification mention org-id board-id entry-id
-                                                                             entry-title secure-uuid change-at author))]
-                  (>!! persistence/persistence-chan {:notify true
-                                                     :org org
-                                                     :notification notification})))))))
+            (doseq [mention new-mentions
+                    :let [self-mention? (= (:user-id mention) author-id)
+                          _ (when self-mention?
+                              (timbre/info "Skipping notification creation for self-mention."))
+                          allowed-user? (user-allowed? (:user-id mention) msg-body)
+                          _ (when-not allowed-user?
+                              (timbre/info "Skipping notification creation for mention since user is not allowed in the board anymore."))
+                          notification (if comment?
+                                         (notification/->InteractionNotification mention org-id board-id entry-id
+                                                                                 entry-title secure-uuid interaction-id
+                                                                                 parent-interaction-id change-at author)
+                                         (notification/->InteractionNotification mention org-id board-id entry-id
+                                                                                 entry-title secure-uuid change-at author))]
+                    :when (and (not self-mention?)
+                               allowed-user?)]
+              (>!! persistence/persistence-chan {:notify true
+                                                 :org org
+                                                 :notification notification})))))
 
       ;; On the add of a comment, where the user(s) to be notified (post author and authors of prior comments)
       ;; aren't also mentioned (and therefore already notified), notify them
@@ -175,20 +187,24 @@
           ;; Send a comment-add notification to storage to alert the clients to refresh thir inbox
           (timbre/info "Sending comment-add notification to Storage for" entry-id)
           (storage-notification/send-trigger! (storage-notification/->trigger "comment-add" entry-id [comment-author]))
-          (doseq [user notify-users-without-mentions]
-            (let [notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
+          (doseq [user notify-users-without-mentions
+                  :let [notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                              entry-title secure-uuid interaction-id
                                                                              parent-interaction-id change-at author user)]
+                  :when (user-allowed? (:user-id user) msg-body)]
+            (>!! persistence/persistence-chan {:notify true
+                                               :org org
+                                               :notification notification}))
+          (cond (= (:user-id publisher) author-id) ; check for a self-comment
+                (timbre/info "Skipping notification creation for self-comment.")
+                publisher-mentioned?
+                (timbre/info "Skipping comment notification due to prior mention notification.")
+                (not (user-allowed? (:user-id publisher) msg-body))
+                (timbre/info "Skipping comment notification due to user not allowed in board anymore.")
+                :else
                 (>!! persistence/persistence-chan {:notify true
                                                    :org org
-                                                   :notification notification})))
-          (if (= (:user-id publisher) author-id) ; check for a self-comment
-            (timbre/info "Skipping notification creation for self-comment.")
-            (if publisher-mentioned?
-              (timbre/info "Skipping comment notification due to prior mention notification.")
-              (>!! persistence/persistence-chan {:notify true
-                                               :org org
-                                               :notification notification})))))
+                                                   :notification notification}))))
 
       ;; On the add of a new reminder, create a notification and persist it
       (when (and reminder? add?)
