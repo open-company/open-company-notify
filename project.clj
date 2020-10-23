@@ -39,6 +39,8 @@
     [com.taoensso/faraday "1.11.0-alpha1" :exclusions [com.amazonaws/aws-java-sdk-dynamodb joda-time com.taoensso/encore]]
     ;; Faraday dependency, not pulled in? https://hc.apache.org/
     [org.apache.httpcomponents/httpclient "4.5.11"]
+    ;; General data-binding functionality for Jackson: works on core streaming API https://github.com/FasterXML/jackson-databind
+    [com.fasterxml.jackson.core/jackson-databind "2.11.2"]
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
     [open-company/lib "0.17.29-alpha45"]
