@@ -253,7 +253,7 @@
   (far/ensure-table dynamodb-opts table-name
     [:user_id :s]
     {:range-keydef [:notify_at :s]
-     :throughput {:read 1 :write 1}
+     :billing-mode :pay-per-request
      :block? true})))
 
 (defn delete-table
@@ -280,7 +280,7 @@
       notification/table-name
       [:user_id :s]
       {:range-keydef [:notify_at :s]
-       :throughput {:read 1 :write 1}
+       :billing-mode :pay-per-request
        :block? true}))
 
   (aprint (far/describe-table c/dynamodb-opts notification/table-name))
