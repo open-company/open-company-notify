@@ -218,6 +218,7 @@
       (assoc
         (clojure.set/rename-keys notification* {
           :user-id :user_id
+          :org-id :org_id
           :board-id :board_id
           :entry-id :entry_id
           :secure-uuid :secure_uuid
