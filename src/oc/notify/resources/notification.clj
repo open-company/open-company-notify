@@ -239,6 +239,7 @@
          :expr-attr-vals {":v" (ttl/ttl-now)}})
       (map #(clojure.set/rename-keys % {
         :user_id :user-id
+        :org_id :org-id
         :board_id :board-id
         :entry_id :entry-id
         :secure_uuid :secure-uuid
