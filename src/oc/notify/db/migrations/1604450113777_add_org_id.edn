@@ -1,0 +1,54 @@
+(ns oc.notify.db.migrations.add-org-id
+  (:require [taoensso.faraday :as far]
+            [rethinkdb.query :as r]
+            [oc.lib.db.migrations :as m]
+            [oc.lib.db.pool :as lib-pool]
+            [oc.notify.resources.notification :as notification]
+            [oc.notify.config :as config]))
+
+(defonce pool (atom nil))
+
+(defn- close-storage-pool []
+  (lib-pool/shutdown-pool! @pool)
+  (reset! pool nil))
+
+(defn- open-storage-pool [db-opts pool-size]
+  (print "Opening RethinkDB connection...")
+  (let [p (lib-pool/fixed-pool (partial lib-pool/init-conn db-opts) lib-pool/close-conn
+                   {:size pool-size :regenerate-interval 5})]
+    (reset! pool p))
+  (print "Done!\n"))
+
+;; NB: The fact that these migrations have been run already does not currently persist, so the up method
+;; needs to be idempotent
+(defn up [dynamodb-opts]
+    ;; Do great things
+  (let [notif-records (far/scan dynamodb-opts notification/table-name {:filter-expr "attribute_not_exists(#org)"
+                                                                       :expr-attr-names {"#org" "org_id"}})]
+    (println "Loaded" (count notif-records) "notifications without org-id from DynamoDB.")
+    (when (seq notif-records)
+      (open-storage-pool config/storage-db-options config/db-pool-size)
+      (lib-pool/with-pool [conn @pool]
+        (let [all-orgs (as-> (r/table "boards") query
+                         (r/pluck query [:uuid :org-uuid])
+                         (r/run query conn)
+                         (if (= (type query) rethinkdb.net.Cursor)
+                           (seq query)
+                           query)
+                         (zipmap (map :uuid query) query))]
+          (println "Loaded" (count all-orgs) "orgs RethinkDB.")
+          (doseq [n notif-records
+                  :let [board-uuid (:board_id n)
+                        org (get all-orgs board-uuid)]
+                  :when org]
+            (println "Updating record" (:entry_id n) "on board:" board-uuid "- found org:" (:org-uuid org))
+            ;; (println (far/update-item dynamodb-opts notification/table-name
+            ;;                           {:user_id (:user_id n)
+            ;;                            :notify_at (:notify_at n)}
+            ;;                           {:update-expr "SET #org = :org"
+            ;;                            :expr-attr-names {"#org" "org_id"}
+            ;;                            :expr-attr-vals {":org" (:org-uuid org)}
+            ;;   s                         :return :all-new}))
+            )))
+      (close-storage-pool))
+    true)) ; return true on success

@@ -77,7 +77,8 @@
     ;; QA environment and dependencies
     :qa {
       :env {
-        :db-name "open_company_auth_qa"
+        :auth-db-name "open_company_auth_qa"
+        :storage-db-name "open_company_storage_qa"
         :hot-reload "false"
         :oc-ws-ensure-origin "false" ; local
         :open-company-auth-passphrase "this_is_a_qa_secret" ; JWT secret
@@ -107,7 +108,8 @@
     ;; Dev environment and dependencies
     :dev [:qa {
       :env ^:replace {
-        :db-name "open_company_auth_dev"
+        :auth-db-name "open_company_auth_dev"
+        :storage-db-name "open_company_storage_dev"
         :hot-reload "true"
         :oc-ws-ensure-origin "true" ; local
         :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
@@ -165,7 +167,8 @@
     :prod {
       :env {
         :env "production"
-        :db-name "open_company_auth"
+        :auth-db-name "open_company_auth"
+        :storage-db-name "open_company_storage"
         :hot-reload "false"
       }
     }
