@@ -36,7 +36,7 @@
   component/Lifecycle
   (start [component]
     (timbre/info "[rehinkdb-pool] starting")
-    (let [pool (pool/fixed-pool (partial pool/init-conn c/auth-db-options) pool/close-conn
+    (let [pool (pool/fixed-pool (partial pool/init-conn c/db-options) pool/close-conn
                                 {:size size :regenerate-interval regenerate-interval})]
       (timbre/info "[rehinkdb-pool] started")
       (assoc component :pool pool)))

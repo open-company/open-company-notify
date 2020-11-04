@@ -248,8 +248,7 @@
 (defn echo-config [port]
   (println (str "\n"
     "Running on port: " port "\n"
-    "Auth database: " c/auth-db-name "\n"
-    "Storage database: " c/storage-db-name "\n"
+    "Database: " c/db-name "\n"
     "Database pool: " c/db-pool-size "\n"
     "Dynamo DB: " c/dynamodb-end-point "\n"
     "Table prefix: " c/dynamodb-table-prefix "\n"

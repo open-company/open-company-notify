@@ -32,15 +32,11 @@
 
 (defonce db-host (or (env :db-host) "localhost"))
 (defonce db-port (or (env :db-port) 28015))
-(defonce auth-db-name (or (env :auth-db-name) "open_company_auth"))
-(defonce storage-db-name (or (env :storage-db-name) "open_company_storage"))
+(defonce db-name (or (env :db-name) "open_company_auth"))
 (defonce db-pool-size (or (env :db-pool-size) (- core-async-limit 21))) ; conservative with the core.async limit
 
-(defonce auth-db-map {:host db-host :port db-port :db auth-db-name})
-(defonce auth-db-options (flatten (vec auth-db-map))) ; k/v sequence as clj-rethinkdb wants it
-
-(defonce storage-db-map {:host db-host :port db-port :db storage-db-name})
-(defonce storage-db-options (flatten (vec storage-db-map))) ; k/v sequence as clj-rethinkdb wants it
+(defonce db-map {:host db-host :port db-port :db db-name})
+(defonce db-options (flatten (vec db-map))) ; k/v sequence as clj-rethinkdb wants it
 
 ;; ----- DynamoDB -----
 
