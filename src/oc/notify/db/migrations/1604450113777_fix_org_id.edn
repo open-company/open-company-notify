@@ -9,7 +9,7 @@
 (defn up [dynamodb-opts]
   (let [notif-records (far/scan dynamodb-opts notification/table-name {:filter-expr "attribute_not_exists(#org)"
                                                                        :expr-attr-names {"#org" "org_id"}})]
-    (println "Loaded" (count notif-records) "notifications without org-id from DynamoDB.")
+    (println "Loaded" (count notif-records) "notifications without org_id from DynamoDB.")
     (if (seq notif-records)
       (doseq [n notif-records
               :let [org-id (:org-id n)]
