@@ -264,7 +264,7 @@
                                                  :notification notification})))))
 
       ;; User added to a new team, send notification
-      (when (and team? (not premium-action))
+      (when (and team? team-add?)
         (timbre/info (str "Proccessing premium " premium-action " notification..."))
         (let [team-add-notification (notification/->TeamAddNotification author (:sender msg-body) (:org (:new msg-body)) change-at)]
           (>!! persistence/persistence-chan {:notify true
