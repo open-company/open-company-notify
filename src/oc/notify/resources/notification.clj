@@ -61,8 +61,14 @@
 (def PremiumNotification (merge Notification {
   :premium-action TeamPremiumAction}))
 
-(def TeamAddNotification (merge Notification {
-  :a TeamPremiumAction}))
+(def TeamAddNotification (merge Notification
+  {:sender-user-id lib-schema/UniqueID
+   :sender-name (schema/maybe lib-schema/NonBlankStr)
+   :sender-avatar-url (schema/maybe lib-schema/NonBlankStr)
+   (schema/optional-key :org-name) (schema/maybe lib-schema/NonBlankStr)
+   (schema/optional-key :org-slug) lib-schema/NonBlankStr
+   (schema/optional-key :org-logo-url) (schema/maybe schema/Str)
+   :team-id lib-schema/UniqueID}))
 
 ;; ----- Constructors -----
 
@@ -243,7 +249,9 @@
     sender :- lib-schema/Author
     org :- {:slug lib-schema/NonBlankStr
             :uuid lib-schema/UniqueID
-            :team-id lib-schema/UniqueID}
+            :name lib-schema/NonBlankStr
+            :team-id lib-schema/UniqueID
+            (schema/optional-key :logo-url) (schema/maybe schema/Str)}
     change-at :- lib-schema/ISO8601]
    {:user-id (:user-id user)
     :author user
@@ -255,6 +263,12 @@
     :team? true
     :team-id (:team-id org)
     :content (str (:name sender) " just invited you to his team on Carrot.")
+    :sender-avatar-url (:avatar-url sender)
+    :sender-name (:name sender)
+    :sender-user-id (:user-id sender)
+    :org-name (:name org)
+    :org-slug (:slug org)
+    :org-logo-url (:logo-url org)
     :refresh-token-at change-at}))
 
 ;; ----- DB Operations -----
