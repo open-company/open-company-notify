@@ -14,6 +14,8 @@
 
 ;; ----- Schema -----
 
+(def TeamPremiumAction (schema/enum :on :off :cancel :expiring))
+
 (def Mention {
   :user-id lib-schema/UniqueID
   :mention {schema/Keyword schema/Any}
@@ -26,10 +28,10 @@
   :mention? schema/Bool
   :reminder? schema/Bool
   (schema/optional-key :follow-up?) schema/Bool
+  (schema/optional-key :team?) schema/Bool
   :author lib-schema/Author
   schema/Keyword schema/Any
-  (schema/optional-key :url-path) schema/Str
-  })
+  (schema/optional-key :url-path) schema/Str})
 
 (def InteractionNotification (merge Notification {
   :board-id lib-schema/UniqueID
@@ -55,6 +57,12 @@
   :mention? (schema/pred false?)
   :reminder? (schema/pred false?)
   (schema/optional-key :follow-up?) (schema/pred true?)}))
+
+(def PremiumNotification (merge Notification {
+  :premium-action TeamPremiumAction}))
+
+(def TeamAddNotification (merge Notification {
+  :a TeamPremiumAction}))
 
 ;; ----- Constructors -----
 
@@ -203,6 +211,51 @@
     :reminder? false
     :author author
     :url-path (interaction-path org-id board-id entry-id interaction-id)}))
+
+(schema/defn ^:always-validate ->PremiumNotification :- PremiumNotification
+  ([author :- lib-schema/Author
+    org-id :- lib-schema/UniqueID
+    team-id :- lib-schema/UniqueID
+    change-at :- lib-schema/ISO8601
+    premium-action :- TeamPremiumAction
+    user-id :- lib-schema/UniqueID]
+   (let [title (case premium-action
+                :on
+                "Congrats, Your team is now on Premium! 🎉"
+                :expiring
+                (str "Your Premium subscription is expiring in less than 24 hours. Please review your payment method."))]
+     {:user-id user-id
+      :author author
+      :org-id org-id
+      :notify-at change-at
+      :mention? false
+      :reminder? false
+      :follow-up? false
+      :team? true
+      :team-id team-id
+      :content title
+      :refresh-token-at change-at
+      :premium-action premium-action})))
+
+(schema/defn ^:always-validate ->TeamAddNotification :- TeamAddNotification
+    
+  ([user :- lib-schema/Author
+    sender :- lib-schema/Author
+    org :- {:slug lib-schema/NonBlankStr
+            :uuid lib-schema/UniqueID
+            :team-id lib-schema/UniqueID}
+    change-at :- lib-schema/ISO8601]
+   {:user-id (:user-id user)
+    :author user
+    :org-id (:uuid org)
+    :notify-at change-at
+    :mention? false
+    :reminder? false
+    :follow-up? false
+    :team? true
+    :team-id (:team-id org)
+    :content (str (:name sender) " just invited you to his team on Carrot.")
+    :refresh-token-at change-at}))
 
 ;; ----- DB Operations -----
 

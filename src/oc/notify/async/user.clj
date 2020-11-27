@@ -32,6 +32,7 @@
   ([db-pool message :guard :notify]
   (pool/with-pool [conn db-pool]
     (let [reminder? (:reminder? message)
+          team? (:team? message)
           user-id (:user-id message)
           notification (:notification message)
           org (:org message)]

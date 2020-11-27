@@ -62,17 +62,43 @@
     :reminder {...}
     :follow-up {...}
   }
+
+    {
+    :notification-type 'team-add'
+    :notification-at ISO8601
+    :resource-type 'team'
+    :invitee lib-schema/User
+    :inviting lib-schema/User
+    :team-id UniqueID
+    :org-slug schema/Str
+    :notify-users [Author]
+  }
+
+  {
+    :notification-type 'premium'
+    :premium-action 'on|off|expiring|cancel'
+    :notification-at ISO8601
+    :resource-type 'team'
+    :team-id UniqueID
+    :notify-users [Author]
+  }
+
   "
   [msg done-channel]
   (timbre/trace "Received message:" msg)
   (doseq [body (sqs/read-message-body (:body msg))]
     (let [msg-body (or (cw/keywordize-keys (json/parse-string (:Message body))) body)
           change-type (keyword (:notification-type msg-body))
+          team? (= change-type :team)
+          team-add? (= change-type :team-add)
+          premium-action (when team?
+                           (keyword (:premium-action msg-body)))
           add? (or (= change-type :add)
                    (= change-type :comment-add))
           update? (= change-type :update)
           delete? (= change-type :delete)
           resource-type (keyword (:resource-type msg-body))
+          team? (= resource-type :team)
           entry? (= resource-type :entry)
           comment? (= resource-type :comment)
           reminder? (= resource-type :reminder)
@@ -99,7 +125,6 @@
           new-body (-> msg-body :content :new :body)
           new-abstract (-> msg-body :content :new :abstract)
           author-id (:user-id author)
-          user-id (:user-id author)
           comment-author (when (and comment? add?)
                            (-> msg-body :content :new :author))]
       (timbre/info "Received message from SQS:" msg-body)
@@ -108,7 +133,7 @@
              entry?
              (not draft?)
              (or add? update?))
-      
+
         (timbre/info "Processing change for follow-ups...")
         (let [old-entry (-> msg-body :content :old)
               prior-follow-ups (if (:draft old-entry) [] (:follow-ups old-entry))
@@ -130,7 +155,7 @@
              (not draft?)
              (or add? update?)
              (or entry? comment?))
-      
+
         (timbre/info "Processing change for mentions and inbox follows...")
         (let [old-body (-> msg-body :content :old :body)
               old-abstract (-> msg-body :content :old :abstract)
@@ -143,7 +168,7 @@
                                  ;; In case of comment add let's add the comment author
                                  ;; to the list that needs to follow the current post
                                  (mapv first (vals
-                                  (group-by :user-id (conj users-for-follow* comment-author))))
+                                              (group-by :user-id (conj users-for-follow* comment-author))))
                                  users-for-follow*)]
           ;; Add follow for all mentioned users (no need to diff from the old, we will override the follow if present)
           (when (not-empty users-for-follow)
@@ -215,22 +240,61 @@
                                              :org org
                                              :notification notification})))
 
+      ;; Premium changes notifications
+      (when (and team? premium-action)
+        (timbre/info (str "Proccessing premium " premium-action " notification..."))
+        (case premium-action
+          :expiring
+          (do
+            (timbre/info "Notify team admins about expiring token")
+            (doseq [team-admin-id (:team-admins msg-body)
+                    :let [expire-notification (notification/->PremiumNotification author (:team-id msg-body) org-id change-at premium-action team-admin-id)]]
+              (>!! persistence/persistence-chan {:notify true
+                                                 :org org
+                                                 :user-id team-admin-id
+                                                 :notification expire-notification})))
+          :on
+          (do
+            (timbre/info "Notify whole team of premium")
+            (doseq [user-id (:notify-users msg-body)
+                    :let [notification (notification/->PremiumNotification author (:team-id msg-body) org-id change-at premium-action user-id)]]
+              (>!! persistence/persistence-chan {:notify true
+                                                 :org org
+                                                 :user-id user-id
+                                                 :notification notification})))))
+
+      ;; User added to a new team, send notification
+      (when (and team? (not premium-action))
+        (timbre/info (str "Proccessing premium " premium-action " notification..."))
+        (let [team-add-notification (notification/->TeamAddNotification author (:sender msg-body) (:org (:new msg-body)) change-at)]
+          (>!! persistence/persistence-chan {:notify true
+                                             :org (:org (:new msg-body))
+                                             :user-id (:user-id author)
+                                             :notification team-add-notification})))
+
       ;; Draft, org, board, or unknown
       (cond
-       draft?
-       (timbre/trace "Skipping draft message from SQS:" change-type resource-type)
+        draft?
+        (timbre/trace "Skipping draft message from SQS:" change-type resource-type)
 
-       (or comment? entry? (and reminder? add?))
-       true ; already handled
+        (or comment? entry? (and reminder? add?))
+        true ; already handled
 
-       (= resource-type :org)
-       (timbre/trace "Unhandled org message from SQS:" change-type resource-type)
+        (and team? premium-action)
+        true ; already handled
 
-       (= resource-type :board)
-       (timbre/trace "Unhandled board message from SQS:" change-type resource-type)
+        (= resource-type :org)
+        (timbre/trace "Unhandled org message from SQS:" change-type resource-type)
 
-       :else
-       (timbre/warn "Unknown message from SQS:" change-type resource-type))))
+        (= resource-type :board)
+        (timbre/trace "Unhandled board message from SQS:" change-type resource-type)
+
+        (and (= resource-type :team)
+             (not (#{:on :expiring} premium-action)))
+        (timbre/trace "Unhandled team message from SQS:" change-type resource-type)
+
+        :else
+        (timbre/warn "Unknown message from SQS:" change-type resource-type))))
 
   (sqs/ack done-channel msg))
 

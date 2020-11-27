@@ -26,6 +26,8 @@
     :type (cond
             (contains? notification :reminder)
             (-> notification :reminder :notification-type)
+            (:team? notification)
+            "team"
             (:follow-up? notification)
             "follow-up"
             :else
