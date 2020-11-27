@@ -223,7 +223,7 @@
                 :on
                 "Congrats, Your team is now on Premium! 🎉"
                 :expiring
-                (str "Your Premium subscription is expiring in less than 24 hours. Please review your payment method."))]
+                "Your Premium subscription expires soon. Please renew your payment method to maintain premium features.")]
      {:user-id user-id
       :author author
       :org-id org-id

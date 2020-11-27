@@ -92,7 +92,7 @@
           team? (= change-type :team)
           team-add? (= change-type :team-add)
           premium-action (when team?
-                           (keyword (:premium-action msg-body)))
+                           (:premium-action msg-body))
           add? (or (= change-type :add)
                    (= change-type :comment-add))
           update? (= change-type :update)
