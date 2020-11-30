@@ -248,7 +248,7 @@
           (do
             (timbre/info "Notify team admins about expiring token")
             (doseq [team-admin-id (:team-admins msg-body)
-                    :let [expire-notification (notification/->PremiumNotification author (:team-id msg-body) org-id change-at premium-action team-admin-id)]]
+                    :let [expire-notification (notification/->PaymentsNotification author (:team-id msg-body) org-id change-at premium-action team-admin-id)]]
               (>!! persistence/persistence-chan {:notify true
                                                  :org org
                                                  :user-id team-admin-id
@@ -257,7 +257,7 @@
           (do
             (timbre/info "Notify whole team of premium")
             (doseq [user-id (:notify-users msg-body)
-                    :let [notification (notification/->PremiumNotification author (:team-id msg-body) org-id change-at premium-action user-id)]]
+                    :let [notification (notification/->PaymentsNotification author (:team-id msg-body) org-id change-at premium-action user-id)]]
               (>!! persistence/persistence-chan {:notify true
                                                  :org org
                                                  :user-id user-id
@@ -266,10 +266,10 @@
       ;; User added to a new team, send notification
       (when (and team? team-add?)
         (timbre/info (str "Proccessing premium " premium-action " notification..."))
-        (let [team-add-notification (notification/->TeamAddNotification author (:sender msg-body) (:org msg-body) change-at)]
+        (let [team-add-notification (notification/->TeamAddNotification author org change-at (:invitee msg-body) (:admin? msg-body))]
           (>!! persistence/persistence-chan {:notify true
                                              :org org
-                                             :user-id (:user-id author)
+                                             :user-id (-> msg-body :invitee :user-id)
                                              :notification team-add-notification})))
 
       ;; Draft, org, board, or unknown

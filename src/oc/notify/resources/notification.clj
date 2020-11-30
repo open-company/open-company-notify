@@ -3,6 +3,7 @@
   (:require [taoensso.faraday :as far]
             [schema.core :as schema]
             [oc.lib.html :as lib-html]
+            [clojure.set :as clj-set]
             [oc.lib.schema :as lib-schema]
             [oc.notify.config :as c]
             [oc.lib.dynamo.common :as ttl]
@@ -31,7 +32,8 @@
   (schema/optional-key :team?) schema/Bool
   :author lib-schema/Author
   schema/Keyword schema/Any
-  (schema/optional-key :url-path) schema/Str})
+  (schema/optional-key :url-path) schema/Str
+  (schema/optional-key :refresh-token-at) lib-schema/ISO8601})
 
 (def InteractionNotification (merge Notification {
   :board-id lib-schema/UniqueID
@@ -58,17 +60,18 @@
   :reminder? (schema/pred false?)
   (schema/optional-key :follow-up?) (schema/pred true?)}))
 
-(def PremiumNotification (merge Notification {
+(def PaymentsNotification (merge Notification {
   :premium-action TeamPremiumAction}))
 
+(def Org {(schema/optional-key :slug) lib-schema/NonBlankStr
+          :uuid lib-schema/UniqueID
+          :name (schema/maybe lib-schema/NonBlankStr)
+          :team-id lib-schema/UniqueID
+          (schema/optional-key :logo-url) (schema/maybe schema/Str)})
+
 (def TeamAddNotification (merge Notification
-  {:sender-user-id lib-schema/UniqueID
-   :sender-name (schema/maybe lib-schema/NonBlankStr)
-   :sender-avatar-url (schema/maybe lib-schema/NonBlankStr)
-   (schema/optional-key :org-name) (schema/maybe lib-schema/NonBlankStr)
-   (schema/optional-key :org-slug) lib-schema/NonBlankStr
-   (schema/optional-key :org-logo-url) (schema/maybe schema/Str)
-   :team-id lib-schema/UniqueID}))
+  {(schema/optional-key :org) (schema/maybe Org)
+   (schema/optional-key :admin?) (schema/maybe schema/Bool)}))
 
 ;; ----- Constructors -----
 
@@ -218,7 +221,7 @@
     :author author
     :url-path (interaction-path org-id board-id entry-id interaction-id)}))
 
-(schema/defn ^:always-validate ->PremiumNotification :- PremiumNotification
+(schema/defn ^:always-validate ->PaymentsNotification :- PaymentsNotification
   ([author :- lib-schema/Author
     org-id :- lib-schema/UniqueID
     team-id :- lib-schema/UniqueID
@@ -245,54 +248,43 @@
 
 (schema/defn ^:always-validate ->TeamAddNotification :- TeamAddNotification
     
-  ([user :- lib-schema/Author
-    sender :- lib-schema/Author
-    org :- {:slug lib-schema/NonBlankStr
-            :uuid lib-schema/UniqueID
-            :name lib-schema/NonBlankStr
-            :team-id lib-schema/UniqueID
-            (schema/optional-key :logo-url) (schema/maybe schema/Str)}
-    change-at :- lib-schema/ISO8601]
-   {:user-id (:user-id user)
-    :author user
+  ([author :- lib-schema/Author
+    org :- Org
+    change-at :- lib-schema/ISO8601
+    invitee :- lib-schema/Author
+    admin? :- schema/Bool]
+   {:user-id (:user-id invitee)
+    :author author
     :org-id (:uuid org)
     :notify-at change-at
     :mention? false
     :reminder? false
     :follow-up? false
     :team? true
-    :team-id (:team-id org)
-    :content (str (:name sender) " just invited you to his team on Carrot.")
-    :sender-avatar-url (:avatar-url sender)
-    :sender-name (:name sender)
-    :sender-user-id (:user-id sender)
-    :org-name (:name org)
-    :org-slug (:slug org)
-    :org-logo-url (:logo-url org)
+    :content (str (:name author) " just invited you to " (when admin? "be an admin in ") "his team on Carrot.")
+    :org org
+    :admin? admin?
     :refresh-token-at change-at}))
 
 ;; ----- DB Operations -----
 
-(defn transform-notification
+(defn ^:always-validate ->notification :- Notification
   [notification-data]
   (cond-> notification-data
-    (:content notification-data) (update :content lib-html/sanitize-html)))
+    (:content notification-data) (update :content lib-html/sanitize-html)
+    true (clj-set/rename-keys {:user-id :user_id
+                               :org-id :org_id
+                               :board-id :board_id
+                               :entry-id :entry_id
+                               :secure-uuid :secure_uuid
+                               :interaction-id :interaction_id
+                               :parent-interaction-id :parent_interaction_id
+                               :notify-at :notify_at})
+    true (assoc :ttl (ttl/ttl-epoch c/notification-ttl))))
 
 (schema/defn ^:always-validate store!
   [notification :- Notification]
-  (let [notification* (transform-notification notification)]
-    (far/put-item c/dynamodb-opts table-name
-      (assoc
-        (clojure.set/rename-keys notification* {
-          :user-id :user_id
-          :board-id :board_id
-          :entry-id :entry_id
-          :secure-uuid :secure_uuid
-          :interaction-id :interaction_id
-          :parent-interaction-id :parent_interaction_id
-          :notify-at :notify_at})
-        :ttl (ttl/ttl-epoch c/notification-ttl)
-        )))
+  (far/put-item c/dynamodb-opts table-name (->notification notification))
   true)
 
 (schema/defn ^:always-validate retrieve :- [Notification]
@@ -303,7 +295,7 @@
         {:filter-expr "#k > :v"
          :expr-attr-names {"#k" "ttl"}
          :expr-attr-vals {":v" (ttl/ttl-now)}})
-      (map #(clojure.set/rename-keys % {
+      (map #(clj-set/rename-keys % {
         :user_id :user-id
         :board_id :board-id
         :entry_id :entry-id
