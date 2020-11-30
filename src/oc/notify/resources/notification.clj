@@ -268,7 +268,7 @@
 
 ;; ----- DB Operations -----
 
-(defn ^:always-validate ->notification :- Notification
+(schema/defn ^:always-validate ->notification :- Notification
   [notification-data]
   (cond-> notification-data
     (:content notification-data) (update :content lib-html/sanitize-html)
@@ -296,6 +296,7 @@
          :expr-attr-names {"#k" "ttl"}
          :expr-attr-vals {":v" (ttl/ttl-now)}})
       (map #(clj-set/rename-keys % {
+        :org_id :org-id
         :user_id :user-id
         :board_id :board-id
         :entry_id :entry-id
