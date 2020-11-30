@@ -268,7 +268,7 @@
 
 ;; ----- DB Operations -----
 
-(defn ^:always-validate ->notification :- Notification
+(schema/defn ^:always-validate ->notification :- Notification
   [notification-data]
   (cond-> notification-data
     (:content notification-data) (update :content lib-html/sanitize-html)
