@@ -268,7 +268,7 @@
 
 ;; ----- DB Operations -----
 
-(schema/defn ^:always-validate ->notification :- Notification
+(defn- transform-notification
   [notification-data]
   (cond-> notification-data
     (:content notification-data) (update :content lib-html/sanitize-html)
@@ -284,7 +284,7 @@
 
 (schema/defn ^:always-validate store!
   [notification :- Notification]
-  (far/put-item c/dynamodb-opts table-name (->notification notification))
+  (far/put-item c/dynamodb-opts table-name (transform-notification notification))
   true)
 
 (schema/defn ^:always-validate retrieve :- [Notification]
@@ -360,7 +360,7 @@
       data-avatar-url='...'
       data-found='true'>@Albert Camus</span>, what do you think about this?"))])))
 
-  (def n1 (notification/->Notification mention1 "2222-2222-2222" "3333-3333-3333" "4444-4444-4444" (oc-time/current-timestamp) coyote))
+  (def n1 (notification/transform-notification mention1 "2222-2222-2222" "3333-3333-3333" "4444-4444-4444" (oc-time/current-timestamp) coyote))
   (notification/store! n1)
   (notification/retrieve "1111-1111-1111")
 
