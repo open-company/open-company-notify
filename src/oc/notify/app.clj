@@ -323,6 +323,8 @@
     "AWS SQS storage queue: " c/aws-sqs-storage-queue "\n"
     "Hot-reload: " c/hot-reload "\n"
     "Ensure origin: " c/ensure-origin "\n"
+    "UI endpoint: " c/ui-server-url "\n"
+    "Production: " c/prod? "\n"
     "Sentry: " c/dsn "\n"
     "  env: " c/sentry-env "\n"
     (when-not (clojure.string/blank? c/sentry-release)
