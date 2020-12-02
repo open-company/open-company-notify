@@ -8,6 +8,7 @@
             [defun.core :refer (defun-)]
             [oc.lib.db.common :as db-common]
             [oc.lib.db.pool :as pool]
+            [oc.lib.sentry.core :as sentry]
             [oc.notify.async.bot :as bot]
             [oc.notify.async.email :as email]
             [oc.notify.lib.expo :as expo]
@@ -66,7 +67,7 @@
           (try
             (handle-user-message db-pool message)
           (catch Exception e
-            (timbre/error e)))))))))
+            (sentry/capture e)))))))))
 
 ;; ----- Component start/stop -----
 

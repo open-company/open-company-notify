@@ -3,6 +3,7 @@
   (:require [clojure.core.async :as async :refer (>!! <!)]
             [taoensso.sente :as sente]
             [taoensso.timbre :as timbre]
+            [oc.lib.sentry.core :as sentry]
             [compojure.core :as compojure :refer (defroutes GET POST)]
             [taoensso.sente.server-adapters.http-kit :refer (get-sch-adapter)]
             [oc.lib.jwt :as jwt]
@@ -149,7 +150,7 @@
               (timbre/info "[websocket] sending:" (first event) "to:" client-id)
               (chsk-send! client-id event))
             (catch Exception e
-              (timbre/error e)))))))))
+              (sentry/capture e)))))))))
 
 ;; ----- Ring routes -----
 
