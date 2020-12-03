@@ -79,8 +79,8 @@
           (try
             (handle-persistence-message message)
           (catch Exception e
-            (sentry/capture e)
-            (timbre/warn e)))))))))
+            (timbre/warn e)
+            (sentry/capture e)))))))))
 
 ;; ----- Component start/stop -----
 

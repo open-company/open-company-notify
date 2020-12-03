@@ -67,6 +67,7 @@
           (try
             (handle-user-message db-pool message)
           (catch Exception e
+            (timbre/warn e)
             (sentry/capture e)))))))))
 
 ;; ----- Component start/stop -----

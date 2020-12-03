@@ -153,8 +153,8 @@
               (timbre/info "[websocket] sending:" (first event) "to:" client-id)
               (chsk-send! client-id event))
             (catch Exception e
-              (sentry/capture e)
-              (timbre/warn e)))))))))
+              (timbre/warn e)
+              (sentry/capture e)))))))))
 
 ;; ----- Ring routes -----
 
