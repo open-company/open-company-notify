@@ -184,7 +184,9 @@
             (timbre/info "Requesting follow for" (count users-for-follow) "mention(s)" (if comment-add? " and comment author" ""))
             (storage-notification/send-trigger! (storage-notification/->trigger "follow" entry-id users-for-follow)))
           ;; If there are new mentions, we need to persist them
-          (when (not-empty new-mentions)
+          (when (and (not-empty new-mentions)
+                     author-id
+                     author)
             (timbre/info "Requesting persistence for" (count new-mentions) "mention(s).")
             (doseq [mention new-mentions
                     :let [self-mention? (= (:user-id mention) author-id)
@@ -192,18 +194,18 @@
                               (timbre/info "Skipping notification creation for self-mention."))
                           allowed-user? (user-allowed? (:user-id mention) msg-body)
                           _ (when-not allowed-user?
-                              (timbre/info "Skipping notification creation for mention since user is not allowed in the board anymore."))
-                          notification (if comment?
-                                         (notification/->InteractionNotification mention org-id board-id entry-id
-                                                                                 entry-title secure-uuid interaction-id
-                                                                                 parent-interaction-id change-at author)
-                                         (notification/->InteractionNotification mention org-id board-id entry-id
-                                                                                 entry-title secure-uuid change-at author))]
+                              (timbre/info "Skipping notification creation for mention since user is not allowed in the board anymore."))]
                     :when (and (not self-mention?)
                                allowed-user?)]
-              (>!! persistence/persistence-chan {:notify true
-                                                 :org org
-                                                 :notification notification})))))
+              (let [notification (if comment?
+                                   (notification/->InteractionNotification mention org-id board-id entry-id
+                                                                           entry-title secure-uuid interaction-id
+                                                                           parent-interaction-id change-at author)
+                                   (notification/->InteractionNotification mention org-id board-id entry-id
+                                                                           entry-title secure-uuid change-at author))]
+                (>!! persistence/persistence-chan {:notify true
+                                                   :org org
+                                                   :notification notification}))))))
 
       ;; On the add of a comment, where the user(s) to be notified (post author and authors of prior comments)
       ;; aren't also mentioned (and therefore already notified), notify them
