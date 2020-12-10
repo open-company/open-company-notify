@@ -63,14 +63,16 @@
 (def PaymentsNotification (merge Notification {
   :premium-action TeamPremiumAction}))
 
+
 (def Org {(schema/optional-key :slug) lib-schema/NonBlankStr
           :uuid lib-schema/UniqueID
           :name (schema/maybe lib-schema/NonBlankStr)
           :team-id lib-schema/UniqueID
           (schema/optional-key :logo-url) (schema/maybe schema/Str)})
 
-(def TeamAddNotification (merge Notification
+(def TeamNotification (merge Notification
   {(schema/optional-key :org) (schema/maybe Org)
+   :team-action (schema/enum :team-add :team-remove)
    (schema/optional-key :admin?) (schema/maybe schema/Bool)}))
 
 ;; ----- Constructors -----
@@ -246,7 +248,7 @@
       :refresh-token-at change-at
       :premium-action premium-action})))
 
-(schema/defn ^:always-validate ->TeamAddNotification :- TeamAddNotification
+(schema/defn ^:always-validate ->TeamAddNotification :- TeamNotification
     
   ([author :- lib-schema/Author
     org :- Org
@@ -264,6 +266,27 @@
     :content (str (:name author) " just invited you to " (when admin? "be an admin in ") "his team on Carrot.")
     :org org
     :admin? admin?
+    :team-action :team-add
+    :refresh-token-at change-at}))
+
+(schema/defn ^:always-validate ->TeamRemoveNotification :- TeamNotification
+
+  ([author :- lib-schema/Author
+    org :- Org
+    change-at :- lib-schema/ISO8601
+    removed-user :- lib-schema/Author
+    admin? :- schema/Bool]
+   {:user-id (:user-id removed-user)
+    :author author
+    :org-id (:uuid org)
+    :notify-at change-at
+    :mention? false
+    :reminder? false
+    :follow-up? false
+    :team? true
+    :org org
+    :admin? admin?
+    :team-action :team-remove
     :refresh-token-at change-at}))
 
 ;; ----- DB Operations -----

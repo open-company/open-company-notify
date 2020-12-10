@@ -64,21 +64,30 @@
   }
 
     {
+    :resource-type 'team'
     :notification-type 'team-add'
     :notification-at ISO8601
-    :resource-type 'team'
     :invitee lib-schema/User
-    :inviting lib-schema/User
+    :user lib-schema/User
     :team-id UniqueID
-    :org-slug schema/Str
-    :notify-users [Author]
+    :org {:slug :uuid :name}
+  }
+  
+  {
+    :resource-type 'team'
+    :notification-type 'team-remove'
+    :notification-at ISO8601
+    :removed-user lib-schema/User
+    :user lib-schema/User
+    :team-id UniqueID
+    :org {:slug :uuid :name}
   }
 
   {
+    :resource-type 'team'
     :notification-type 'premium'
     :premium-action 'on|off|expiring|cancel'
     :notification-at ISO8601
-    :resource-type 'team'
     :team-id UniqueID
     :notify-users [Author]
   }
@@ -89,10 +98,10 @@
   (doseq [body (sqs/read-message-body (:body msg))]
     (let [msg-body (or (cw/keywordize-keys (json/parse-string (:Message body))) body)
           change-type (keyword (:notification-type msg-body))
-          team? (= change-type :team)
           team-add? (= change-type :team-add)
-          premium-action (when team?
-                           (:premium-action msg-body))
+          team-remove? (= change-type :team-remove)
+          premium? (= change-type :premium)
+          premium-action (:premium-action msg-body)
           add? (or (= change-type :add)
                    (= change-type :comment-add))
           update? (= change-type :update)
@@ -241,7 +250,7 @@
                                              :notification notification})))
 
       ;; Premium changes notifications
-      (when (and team? premium-action)
+      (when (and team? premium?)
         (timbre/info (str "Proccessing premium " premium-action " notification..."))
         (case premium-action
           :expiring
@@ -265,12 +274,21 @@
 
       ;; User added to a new team, send notification
       (when (and team? team-add?)
-        (timbre/info (str "Proccessing premium " premium-action " notification..."))
+        (timbre/info (str "Proccessing team add notification for user" (-> msg-body :invitee :user-id) "..."))
         (let [team-add-notification (notification/->TeamAddNotification author org change-at (:invitee msg-body) (:admin? msg-body))]
           (>!! persistence/persistence-chan {:notify true
                                              :org org
                                              :user-id (-> msg-body :invitee :user-id)
                                              :notification team-add-notification})))
+
+      ;; User removed from a team, send notification
+      (when (and team? team-remove?)
+        (timbre/info (str "Proccessing team remove notification for user " (-> msg-body :removed-user :user-id) "..."))
+        (let [team-remove-notification (notification/->TeamRemoveNotification author org change-at (:removed-user msg-body) (:admin? msg-body))]
+          (>!! persistence/persistence-chan {:notify true
+                                             :org org
+                                             :user-id (-> msg-body :removed-user :user-id)
+                                             :notification team-remove-notification})))
 
       ;; Draft, org, board, or unknown
       (cond
