@@ -135,7 +135,8 @@
           new-abstract (-> msg-body :content :new :abstract)
           author-id (:user-id author)
           comment-author (when (and comment? add?)
-                           (-> msg-body :content :new :author))]
+                           (-> msg-body :content :new :author))
+          comment-author-wants-follow? (and comment? add? (:author-wants-follow? msg-body))]
       (timbre/info "Received message from SQS:" msg-body)
       ;; On an add/update of an entry, look for new follow-ups
       (when (and
@@ -173,9 +174,10 @@
               mentions (concat (mention/mention-parents new-body) (mention/mention-parents new-abstract))
               new-mentions (mention/new-mentions prior-mentions mentions)
               users-for-follow* (mention/users-from-mentions mentions)
-              users-for-follow (if comment-add?
+              users-for-follow (if comment-author-wants-follow?
                                  ;; In case of comment add let's add the comment author
                                  ;; to the list that needs to follow the current post
+                                 ;; if he wants follow
                                  (mapv first (vals
                                               (group-by :user-id (conj users-for-follow* comment-author))))
                                  users-for-follow*)]
