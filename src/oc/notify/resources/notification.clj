@@ -42,7 +42,7 @@
   :secure-uuid lib-schema/UniqueID
   (schema/optional-key :interaction-id) lib-schema/UniqueID
   (schema/optional-key :parent-interaction-id) (schema/maybe lib-schema/UniqueID)
-  :content lib-schema/NonBlankStr
+  :content (schema/maybe lib-schema/NonBlankStr)
   (schema/optional-key :entry-publisher) lib-schema/Author
   :mention? schema/Bool
   :reminder? (schema/pred false?)
@@ -234,7 +234,9 @@
                 :on
                 "Congrats, Your team is now on Premium! 🎉"
                 :expiring
-                "Your Premium subscription expires soon. Please renew your payment method to maintain premium features.")]
+                "Your Premium subscription will expire soon. Please renew your payment method to maintain premium features."
+                 ;; Use empty content to send non visible notifications to the client
+                 nil)]
      {:user-id user-id
       :author author
       :org-id org-id

@@ -274,7 +274,18 @@
               (>!! persistence/persistence-chan {:notify true
                                                  :org org
                                                  :user-id user-id
-                                                 :notification notification})))))
+                                                 :notification notification})))
+          :off
+          (do
+            ;; Send a non-visible notification to have all team's users refresh their token
+            (timbre/info "Notify whole team of freemium fallback")
+            (doseq [user-id (:notify-users msg-body)
+                    :let [notification (notification/->PaymentsNotification author (:team-id msg-body) org-id change-at premium-action user-id)]]
+              (>!! persistence/persistence-chan {:notify true
+                                                 :org org
+                                                 :user-id user-id
+                                                 :notification notification})))
+          (timbre/info "No-op for premium-action: " premium-action)))
 
       ;; User added to a new team, send notification
       (when (and team? team-add?)
