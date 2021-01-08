@@ -138,13 +138,13 @@
   
   ;; arity 7: a mention in a post
   ([mention :- Mention
-   org-id :- lib-schema/UniqueID
-   board-id :- lib-schema/UniqueID
-   entry-id :- lib-schema/UniqueID
-   entry-title
-   secure-uuid :- lib-schema/UniqueID
-   change-at :- lib-schema/ISO8601
-   author :- lib-schema/Author]
+    org-id :- lib-schema/UniqueID
+    board-id :- lib-schema/UniqueID
+    entry-id :- lib-schema/UniqueID
+    entry-title
+    secure-uuid :- lib-schema/UniqueID
+    change-at :- lib-schema/ISO8601
+    author :- lib-schema/Author]
    {:user-id (:user-id mention)
     :org-id org-id
     :board-id board-id
@@ -162,23 +162,23 @@
   ;; arity 8: a mention in a comment
   ([mention org-id board-id entry-id entry-title secure-id interaction-id :- lib-schema/UniqueID
     parent-interaction-id :- (schema/maybe lib-schema/UniqueID) change-at author]
-     (assoc (->InteractionNotification mention org-id board-id entry-id entry-title secure-id change-at author)
-            :interaction-id interaction-id
-            :parent-interaction-id parent-interaction-id
-            :url-path (interaction-path org-id board-id entry-id interaction-id)))
+   (assoc (->InteractionNotification mention org-id board-id entry-id entry-title secure-id change-at author)
+          :interaction-id interaction-id
+          :parent-interaction-id parent-interaction-id
+          :url-path (interaction-path org-id board-id entry-id interaction-id)))
 
   ;; arity 9: a comment on a post
   ([entry-publisher :- lib-schema/Author
-   comment-body :- schema/Str
-   org-id :- lib-schema/UniqueID
-   board-id :- lib-schema/UniqueID
-   entry-id :- lib-schema/UniqueID
-   entry-title
-   secure-uuid :- lib-schema/UniqueID
-   interaction-id :- lib-schema/UniqueID
-   parent-interaction-id :- (schema/maybe lib-schema/UniqueID)
-   change-at :- lib-schema/ISO8601
-   author :- lib-schema/Author]
+    comment-body :- schema/Str
+    org-id :- lib-schema/UniqueID
+    board-id :- lib-schema/UniqueID
+    entry-id :- lib-schema/UniqueID
+    entry-title
+    secure-uuid :- lib-schema/UniqueID
+    interaction-id :- lib-schema/UniqueID
+    parent-interaction-id :- (schema/maybe lib-schema/UniqueID)
+    change-at :- lib-schema/ISO8601
+    author :- lib-schema/Author]
    {:user-id (:user-id entry-publisher)
     :org-id org-id
     :board-id board-id

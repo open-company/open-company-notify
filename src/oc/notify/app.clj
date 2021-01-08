@@ -205,6 +205,7 @@
                                                                            parent-interaction-id change-at author)
                                    (notification/->InteractionNotification mention org-id board-id entry-id
                                                                            entry-title secure-uuid change-at author))]
+                (timbre/info "Notify user" (:user-id mention) "for comment" interaction-id "on" entry-id)
                 (>!! persistence/persistence-chan {:notify true
                                                    :org org
                                                    :notification notification}))))))
@@ -212,7 +213,7 @@
       ;; On the add of a comment, where the user(s) to be notified (post author and authors of prior comments)
       ;; aren't also mentioned (and therefore already notified), notify them
       (when (and comment? add?)
-        (timbre/info "Proccessing a new comment...")
+        (timbre/info "Processing a new comment...")
         (let [publisher (:item-publisher msg-body)
               publisher-id (:user-id publisher)
               mentions (set (map :user-id (mention/new-mentions [] (mention/mention-parents new-body))))
@@ -230,6 +231,7 @@
                                                                              entry-title secure-uuid interaction-id
                                                                              parent-interaction-id change-at author user)]
                   :when (user-allowed? (:user-id user) msg-body)]
+            (timbre/info "Notify user" (:user-id user) "for comment" interaction-id "on" entry-id)
             (>!! persistence/persistence-chan {:notify true
                                                :org org
                                                :notification notification}))
