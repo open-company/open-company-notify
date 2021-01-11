@@ -7,6 +7,7 @@
   (:require [clojure.core.async :as async :refer (>!! <!)]
             [defun.core :refer (defun-)]
             [taoensso.timbre :as timbre]
+            [oc.lib.sentry.core :as sentry]
             [oc.lib.async.watcher :as watcher]
             [oc.notify.async.user :as user]
             [oc.notify.resources.notification :as notification]))
@@ -91,7 +92,8 @@
           (try
             (handle-persistence-message message)
           (catch Exception e
-            (timbre/error e)))))))))
+            (timbre/warn e)
+            (sentry/capture e)))))))))
 
 ;; ----- Component start/stop -----
 

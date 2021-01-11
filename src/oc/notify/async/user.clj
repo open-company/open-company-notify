@@ -8,6 +8,7 @@
             [defun.core :refer (defun-)]
             [oc.lib.db.common :as db-common]
             [oc.lib.db.pool :as pool]
+            [oc.lib.sentry.core :as sentry]
             [oc.notify.async.bot :as bot]
             [oc.notify.async.email :as email]
             [oc.notify.lib.expo :as expo]
@@ -32,6 +33,7 @@
   ([db-pool message :guard :notify]
   (pool/with-pool [conn db-pool]
     (let [reminder? (:reminder? message)
+          team? (:team? message)
           user-id (:user-id message)
           notification (:notification message)
           org (:org message)]
@@ -65,7 +67,8 @@
           (try
             (handle-user-message db-pool message)
           (catch Exception e
-            (timbre/error e)))))))))
+            (timbre/warn e)
+            (sentry/capture e)))))))))
 
 ;; ----- Component start/stop -----
 

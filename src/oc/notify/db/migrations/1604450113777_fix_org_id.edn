@@ -1,0 +1,28 @@
+(ns oc.notify.db.migrations.fix-org-id
+  (:require [taoensso.faraday :as far]
+            [oc.lib.db.migrations :as m]
+            [oc.notify.resources.notification :as notification]
+            [oc.notify.config :as config]))
+
+;; NB: The fact that these migrations have been run already does not currently persist, so the up method
+;; needs to be idempotent
+(defn up [dynamodb-opts]
+  (let [notif-records (far/scan dynamodb-opts notification/table-name {:filter-expr "attribute_not_exists(#org)"
+                                                                       :expr-attr-names {"#org" "org_id"}})]
+    (println "Loaded" (count notif-records) "notifications without org_id from DynamoDB.")
+    (if (seq notif-records)
+      (doseq [n notif-records
+              :let [org-id (:org-id n)]
+              :when org-id]
+        (print " -  Updating record" (:user_id n) "/" (:notify_at n) "with org-id:" org-id "...")
+        (far/update-item dynamodb-opts notification/table-name
+                         {:user_id (:user_id n)
+                          :notify_at (:notify_at n)}
+                         {:update-expr "SET #aOrgId = :org REMOVE #rOrgId"
+                          :expr-attr-names {"#aOrgId" "org_id"
+                                            "#rOrgId" "org-id"}
+                          :expr-attr-vals {":org" org-id}
+                          :return :all-new})
+        (println "Done!"))
+      (println "Skipping, org_id field already fixed."))
+    true)) ; return true on success

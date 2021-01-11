@@ -14,16 +14,16 @@
   ;; All profile dependencies
   :dependencies [
     ;; Lisp on the JVM http://clojure.org/documentation
-    [org.clojure/clojure "1.10.1"]
+    [org.clojure/clojure "1.10.2-alpha3"]
     ;; Command-line parsing https://github.com/clojure/tools.cli
-    [org.clojure/tools.cli "0.4.2"] 
+    [org.clojure/tools.cli "1.0.194"]
     ;; Web application library https://github.com/ring-clojure/ring
-    [ring/ring-devel "1.8.0"]
+    [ring/ring-devel "2.0.0-alpha1"]
     ;; Web application library https://github.com/ring-clojure/ring
     ;; NB: clj-time pulled in by oc.lib
     ;; NB: joda-time pulled in by oc.lib via clj-time
     ;; NB: commons-codec pulled in by oc.lib
-    [ring/ring-core "1.8.0" :exclusions [clj-time joda-time commons-codec]]
+    [ring/ring-core "2.0.0-alpha1" :exclusions [clj-time joda-time commons-codec]]
     ;; CORS library https://github.com/jumblerg/ring.middleware.cors
     [jumblerg/ring.middleware.cors "1.0.1"]
     ;; Ring logging https://github.com/nberger/ring-logger-timbre
@@ -31,17 +31,27 @@
     ;; NB: com.taoensso/timbre pulled in by oc.lib
     [ring-logger-timbre "0.7.6" :exclusions [com.taoensso/encore com.taoensso/timbre]] 
     ;; Web routing https://github.com/weavejester/compojure
-    [compojure "1.6.1"]
+    [compojure "1.6.2"]
     ;; DynamoDB client https://github.com/ptaoussanis/faraday
     ;; NB: com.amazonaws/aws-java-sdk-dynamodb is pulled in by amazonica
     ;; NB: joda-time is pulled in by clj-time
     ;; NB: encore pulled in from oc.lib
-    [com.taoensso/faraday "1.11.0-alpha1" :exclusions [com.amazonaws/aws-java-sdk-dynamodb joda-time com.taoensso/encore]]
+    [com.taoensso/faraday "1.11.1" :exclusions [com.amazonaws/aws-java-sdk-dynamodb joda-time com.taoensso/encore]]
     ;; Faraday dependency, not pulled in? https://hc.apache.org/
-    [org.apache.httpcomponents/httpclient "4.5.11"]
+    [org.apache.httpcomponents/httpclient "4.5.13"]
+    ;; General data-binding functionality for Jackson: works on core streaming API https://github.com/FasterXML/jackson-databind
+    ;; ------------ Do not use 2.12.0-rc1 deps issues ----------------------------
+    [com.fasterxml.jackson.core/jackson-databind "2.11.3"]
+    ;; ---------------------------------------------------------------------
 
     ;; Library for OC projects https://github.com/open-company/open-company-lib
-    [open-company/lib "0.17.25.2"]
+    ;; ************************************************************************
+    ;; ****************** NB: don't go under 0.17.29-alpha60 ******************
+    ;; ***************** (JWT schema changes, more info here: *****************
+    ;; ******* https://github.com/open-company/open-company-lib/pull/82) ******
+    ;; ************************************************************************
+    [open-company/lib "0.17.29-alpha63" :exclusions [commons-codec]]
+    ;; ************************************************************************
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/
     ;; core.async - Async programming and communication https://github.com/clojure/core.async
@@ -65,7 +75,7 @@
     ;; Common ring tasks https://github.com/weavejester/lein-ring
     [lein-ring "0.12.5"]
     ;; Get environment settings from different sources https://github.com/weavejester/environ
-    [lein-environ "1.1.0"]
+    [lein-environ "1.2.0"]
   ]
 
   :profiles {
@@ -94,7 +104,7 @@
         ;; Example-based testing https://github.com/marick/lein-midje
         [lein-midje "3.2.2"]
         ;; Linter https://github.com/jonase/eastwood
-        [jonase/eastwood "0.3.7"]
+        [jonase/eastwood "0.3.11"]
         ;; Static code search for non-idiomatic code https://github.com/jonase/kibit        
         [lein-kibit "0.1.8" :exclusions [org.clojure/clojure]]
       ]
@@ -105,7 +115,7 @@
       :env ^:replace {
         :db-name "open_company_auth_dev"
         :hot-reload "true"
-        :oc-ws-ensure-origin "false" ; local
+        :oc-ws-ensure-origin "true" ; local
         :open-company-auth-passphrase "this_is_a_dev_secret" ; JWT secret
         :aws-access-key-id "CHANGE-ME"
         :aws-secret-access-key "CHANGE-ME"
@@ -122,7 +132,7 @@
         ;; Runs bikeshed, kibit and eastwood https://github.com/itang/lein-checkall
         [lein-checkall "0.1.1"]
         ;; pretty-print the lein project map https://github.com/technomancy/leiningen/tree/master/lein-pprint
-        [lein-pprint "1.2.0"]
+        [lein-pprint "1.3.2"]
         ;; Check for outdated dependencies https://github.com/xsc/lein-ancient
         [lein-ancient "0.6.15"]
         ;; Catch spelling mistakes in docs and docstrings https://github.com/cldwalker/lein-spell
@@ -179,10 +189,11 @@
     "build" ["do" "clean," "deps," "compile"] ; clean and build code
     "create-migration" ["run" "-m" "oc.notify.db.migrations" "create"] ; create a data migration
     "migrate-db" ["run" "-m" "oc.notify.db.migrations" "migrate"] ; run pending data migrations
-    "start" ["do" "run"] ; start a development server
-    "start!" ["with-profile" "prod" "do" "start"] ; start a server in production
-    "autotest" ["with-profile" "qa" "do" "midje" ":autotest"] ; watch for code changes and run affected tests
-    "test!" ["with-profile" "qa" "do" "clean," "build," "midje"] ; run all tests
+    "start*" ["do" "migrate-db," "run"] ; start the service
+    "start" ["with-profile" "dev" "do" "start*"] ; start a development server
+    "start!" ["with-profile" "prod" "do" "start*"] ; start a server in production
+    "autotest" ["with-profile" "qa" "do" "migrate-db," "midje" ":autotest"] ; watch for code changes and run affected tests
+    "test!" ["with-profile" "qa" "do" "clean," "build," "migrate-db," "midje"] ; run all tests
     "repl" ["with-profile" "+repl-config" "repl"]
     "spell!" ["spell" "-n"] ; check spelling in docs and docstrings
     "bikeshed!" ["bikeshed" "-v" "-m" "120"] ; code check with max line length warning of 120 characters

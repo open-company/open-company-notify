@@ -3,6 +3,7 @@
   (:require [taoensso.faraday :as far]
             [schema.core :as schema]
             [oc.lib.html :as lib-html]
+            [clojure.set :as clj-set]
             [oc.lib.schema :as lib-schema]
             [oc.notify.config :as c]
             [oc.lib.dynamo.common :as ttl]
@@ -13,6 +14,8 @@
 (def table-name (keyword (str c/dynamodb-table-prefix "_notification")))
 
 ;; ----- Schema -----
+
+(def TeamPremiumAction (schema/enum :on :off :cancel :expiring))
 
 (def Mention {
   :user-id lib-schema/UniqueID
@@ -26,10 +29,11 @@
   :mention? schema/Bool
   :reminder? schema/Bool
   (schema/optional-key :follow-up?) schema/Bool
+  (schema/optional-key :team?) schema/Bool
   :author lib-schema/Author
   schema/Keyword schema/Any
   (schema/optional-key :url-path) schema/Str
-  })
+  (schema/optional-key :refresh-token-at) lib-schema/ISO8601})
 
 (def InteractionNotification (merge Notification {
   :board-id lib-schema/UniqueID
@@ -38,7 +42,7 @@
   :secure-uuid lib-schema/UniqueID
   (schema/optional-key :interaction-id) lib-schema/UniqueID
   (schema/optional-key :parent-interaction-id) (schema/maybe lib-schema/UniqueID)
-  :content lib-schema/NonBlankStr
+  :content (schema/maybe lib-schema/NonBlankStr)
   (schema/optional-key :entry-publisher) lib-schema/Author
   :mention? schema/Bool
   :reminder? (schema/pred false?)
@@ -55,6 +59,21 @@
   :mention? (schema/pred false?)
   :reminder? (schema/pred false?)
   (schema/optional-key :follow-up?) (schema/pred true?)}))
+
+(def PaymentsNotification (merge Notification {
+  :premium-action TeamPremiumAction}))
+
+
+(def Org {(schema/optional-key :slug) lib-schema/NonBlankStr
+          :uuid lib-schema/UniqueID
+          :name (schema/maybe lib-schema/NonBlankStr)
+          :team-id lib-schema/UniqueID
+          (schema/optional-key :logo-url) (schema/maybe schema/Str)})
+
+(def TeamNotification (merge Notification
+  {(schema/optional-key :org) (schema/maybe Org)
+   :team-action (schema/enum :team-add :team-remove)
+   (schema/optional-key :admin?) (schema/maybe schema/Bool)}))
 
 ;; ----- Constructors -----
 
@@ -119,13 +138,13 @@
   
   ;; arity 7: a mention in a post
   ([mention :- Mention
-   org-id :- lib-schema/UniqueID
-   board-id :- lib-schema/UniqueID
-   entry-id :- lib-schema/UniqueID
-   entry-title
-   secure-uuid :- lib-schema/UniqueID
-   change-at :- lib-schema/ISO8601
-   author :- lib-schema/Author]
+    org-id :- lib-schema/UniqueID
+    board-id :- lib-schema/UniqueID
+    entry-id :- lib-schema/UniqueID
+    entry-title
+    secure-uuid :- lib-schema/UniqueID
+    change-at :- lib-schema/ISO8601
+    author :- lib-schema/Author]
    {:user-id (:user-id mention)
     :org-id org-id
     :board-id board-id
@@ -143,23 +162,23 @@
   ;; arity 8: a mention in a comment
   ([mention org-id board-id entry-id entry-title secure-id interaction-id :- lib-schema/UniqueID
     parent-interaction-id :- (schema/maybe lib-schema/UniqueID) change-at author]
-     (assoc (->InteractionNotification mention org-id board-id entry-id entry-title secure-id change-at author)
-            :interaction-id interaction-id
-            :parent-interaction-id parent-interaction-id
-            :url-path (interaction-path org-id board-id entry-id interaction-id)))
+   (assoc (->InteractionNotification mention org-id board-id entry-id entry-title secure-id change-at author)
+          :interaction-id interaction-id
+          :parent-interaction-id parent-interaction-id
+          :url-path (interaction-path org-id board-id entry-id interaction-id)))
 
   ;; arity 9: a comment on a post
   ([entry-publisher :- lib-schema/Author
-   comment-body :- schema/Str
-   org-id :- lib-schema/UniqueID
-   board-id :- lib-schema/UniqueID
-   entry-id :- lib-schema/UniqueID
-   entry-title
-   secure-uuid :- lib-schema/UniqueID
-   interaction-id :- lib-schema/UniqueID
-   parent-interaction-id :- (schema/maybe lib-schema/UniqueID)
-   change-at :- lib-schema/ISO8601
-   author :- lib-schema/Author]
+    comment-body :- schema/Str
+    org-id :- lib-schema/UniqueID
+    board-id :- lib-schema/UniqueID
+    entry-id :- lib-schema/UniqueID
+    entry-title
+    secure-uuid :- lib-schema/UniqueID
+    interaction-id :- lib-schema/UniqueID
+    parent-interaction-id :- (schema/maybe lib-schema/UniqueID)
+    change-at :- lib-schema/ISO8601
+    author :- lib-schema/Author]
    {:user-id (:user-id entry-publisher)
     :org-id org-id
     :board-id board-id
@@ -204,28 +223,93 @@
     :author author
     :url-path (interaction-path org-id board-id entry-id interaction-id)}))
 
+(schema/defn ^:always-validate ->PaymentsNotification :- PaymentsNotification
+  ([author :- lib-schema/Author
+    org-id :- lib-schema/UniqueID
+    team-id :- lib-schema/UniqueID
+    change-at :- lib-schema/ISO8601
+    premium-action :- TeamPremiumAction
+    user-id :- lib-schema/UniqueID]
+   (let [title (case premium-action
+                :on
+                "Congrats, Your team is now on Premium! 🎉"
+                :expiring
+                "Your Premium subscription will expire soon. Please renew your payment method to maintain premium features."
+                 ;; Use empty content to send non visible notifications to the client
+                 nil)]
+     {:user-id user-id
+      :author author
+      :org-id org-id
+      :notify-at change-at
+      :mention? false
+      :reminder? false
+      :follow-up? false
+      :team? true
+      :team-id team-id
+      :content title
+      :refresh-token-at change-at
+      :premium-action premium-action})))
+
+(schema/defn ^:always-validate ->TeamAddNotification :- TeamNotification
+    
+  ([author :- lib-schema/Author
+    org :- Org
+    change-at :- lib-schema/ISO8601
+    invitee :- lib-schema/Author
+    admin? :- schema/Bool]
+   {:user-id (:user-id invitee)
+    :author author
+    :org-id (:uuid org)
+    :notify-at change-at
+    :mention? false
+    :reminder? false
+    :follow-up? false
+    :team? true
+    :content (str (:name author) " just invited you to " (when admin? "be an admin in ") "his team on Carrot.")
+    :org org
+    :admin? admin?
+    :team-action :team-add
+    :refresh-token-at change-at}))
+
+(schema/defn ^:always-validate ->TeamRemoveNotification :- TeamNotification
+
+  ([author :- lib-schema/Author
+    org :- Org
+    change-at :- lib-schema/ISO8601
+    removed-user :- lib-schema/Author
+    admin? :- schema/Bool]
+   {:user-id (:user-id removed-user)
+    :author author
+    :org-id (:uuid org)
+    :notify-at change-at
+    :mention? false
+    :reminder? false
+    :follow-up? false
+    :team? true
+    :org org
+    :admin? admin?
+    :team-action :team-remove
+    :refresh-token-at change-at}))
+
 ;; ----- DB Operations -----
 
-(defn transform-notification
+(defn- transform-notification
   [notification-data]
   (cond-> notification-data
-    (:content notification-data) (update :content lib-html/sanitize-html)))
+    (:content notification-data) (update :content lib-html/sanitize-html)
+    true (clj-set/rename-keys {:user-id :user_id
+                               :org-id :org_id
+                               :board-id :board_id
+                               :entry-id :entry_id
+                               :secure-uuid :secure_uuid
+                               :interaction-id :interaction_id
+                               :parent-interaction-id :parent_interaction_id
+                               :notify-at :notify_at})
+    true (assoc :ttl (ttl/ttl-epoch c/notification-ttl))))
 
 (schema/defn ^:always-validate store!
   [notification :- Notification]
-  (let [notification* (transform-notification notification)]
-    (far/put-item c/dynamodb-opts table-name
-      (assoc
-        (clojure.set/rename-keys notification* {
-          :user-id :user_id
-          :board-id :board_id
-          :entry-id :entry_id
-          :secure-uuid :secure_uuid
-          :interaction-id :interaction_id
-          :parent-interaction-id :parent_interaction_id
-          :notify-at :notify_at})
-        :ttl (ttl/ttl-epoch c/notification-ttl)
-        )))
+  (far/put-item c/dynamodb-opts table-name (transform-notification notification))
   true)
 
 (schema/defn ^:always-validate delete-by-entry!
@@ -256,8 +340,9 @@
         {:filter-expr "#k > :v"
          :expr-attr-names {"#k" "ttl"}
          :expr-attr-vals {":v" (ttl/ttl-now)}})
-      (map #(clojure.set/rename-keys % {
+      (map #(clj-set/rename-keys % {
         :user_id :user-id
+        :org_id :org-id
         :board_id :board-id
         :entry_id :entry-id
         :secure_uuid :secure-uuid
@@ -273,7 +358,7 @@
   (far/ensure-table dynamodb-opts table-name
     [:user_id :s]
     {:range-keydef [:notify_at :s]
-     :throughput {:read 1 :write 1}
+     :billing-mode :pay-per-request
      :block? true})))
 
 (defn delete-table
@@ -300,7 +385,7 @@
       notification/table-name
       [:user_id :s]
       {:range-keydef [:notify_at :s]
-       :throughput {:read 1 :write 1}
+       :billing-mode :pay-per-request
        :block? true}))
 
   (aprint (far/describe-table c/dynamodb-opts notification/table-name))
@@ -320,7 +405,7 @@
       data-avatar-url='...'
       data-found='true'>@Albert Camus</span>, what do you think about this?"))])))
 
-  (def n1 (notification/->Notification mention1 "2222-2222-2222" "3333-3333-3333" "4444-4444-4444" (oc-time/current-timestamp) coyote))
+  (def n1 (notification/transform-notification mention1 "2222-2222-2222" "3333-3333-3333" "4444-4444-4444" (oc-time/current-timestamp) coyote))
   (notification/store! n1)
   (notification/retrieve "1111-1111-1111")
 

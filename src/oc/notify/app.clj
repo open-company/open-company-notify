@@ -5,9 +5,7 @@
     [clojure.core.async :as async :refer (>!!)]
     [clojure.walk :as cw]
     [clojure.java.io :as java-io]
-    [raven-clj.core :as sentry]
-    [raven-clj.interfaces :as sentry-interfaces]
-    [raven-clj.ring :as sentry-mw]
+    [oc.lib.sentry.core :as sentry]
     [taoensso.timbre :as timbre]
     [cheshire.core :as json]
     [ring.logger.timbre :refer (wrap-with-logger)]
@@ -17,7 +15,6 @@
     [ring.middleware.cors :refer (wrap-cors)]
     [compojure.core :as compojure :refer (GET)]
     [com.stuartsierra.component :as component]
-    [oc.lib.sentry-appender :as sa]
     [oc.lib.schema :as lib-schema]
     [oc.lib.sqs :as sqs]
     [oc.notify.components :as components]
@@ -32,20 +29,13 @@
 
 (def draft-board-uuid "0000-0000-0000")
 
-;; ----- Unhandled Exceptions -----
-
-;; Send unhandled exceptions to log and Sentry
-;; See https://stuartsierra.com/2015/05/27/clojure-uncaught-exceptions
-(Thread/setDefaultUncaughtExceptionHandler
- (reify Thread$UncaughtExceptionHandler
-   (uncaughtException [_ thread ex]
-     (timbre/error ex "Uncaught exception on" (.getName thread) (.getMessage ex))
-     (when c/dsn
-       (sentry/capture c/dsn (-> {:message (.getMessage ex)}
-                                 (assoc-in [:extra :exception-data] (ex-data ex))
-                                 (sentry-interfaces/stacktrace ex)))))))
-
 ;; ----- SQS Incoming Request -----
+
+(defn- user-allowed? [user-id msg-body]
+  (let [board-access (:board-access msg-body)
+        allowed-users (:allowed-users msg-body)]
+    (or (not= board-access "private")
+        ((set allowed-users) user-id))))
 
 (defn sqs-handler
   "
@@ -72,19 +62,56 @@
     :reminder {...}
     :follow-up {...}
   }
+
+    {
+    :resource-type 'team'
+    :notification-type 'team-add'
+    :notification-at ISO8601
+    :invitee lib-schema/User
+    :user lib-schema/User
+    :team-id UniqueID
+    :org {:slug :uuid :name}
+  }
+  
+  {
+    :resource-type 'team'
+    :notification-type 'team-remove'
+    :notification-at ISO8601
+    :removed-user lib-schema/User
+    :user lib-schema/User
+    :team-id UniqueID
+    :org {:slug :uuid :name}
+  }
+
+  {
+    :resource-type 'team'
+    :notification-type 'premium'
+    :premium-action 'on|off|expiring|cancel'
+    :notification-at ISO8601
+    :team-id UniqueID
+    :notify-users [Author]
+  }
+
   "
   [msg done-channel]
   (timbre/trace "Received message:" msg)
   (doseq [body (sqs/read-message-body (:body msg))]
     (let [msg-body (or (cw/keywordize-keys (json/parse-string (:Message body))) body)
           change-type (keyword (:notification-type msg-body))
-          add? (= change-type :add)
+          team-add? (= change-type :team-add)
+          team-remove? (= change-type :team-remove)
+          premium? (= change-type :premium)
+          premium-action (:premium-action msg-body)
+          add? (or (= change-type :add)
+                   (= change-type :comment-add))
           update? (= change-type :update)
           delete? (= change-type :delete)
           resource-type (keyword (:resource-type msg-body))
+          team? (= resource-type :team)
           entry? (= resource-type :entry)
           comment? (= resource-type :comment)
           reminder? (= resource-type :reminder)
+          comment-add? (and comment? add?)
           org (:org msg-body)
           org-id (:uuid org)
           board-id (or (-> msg-body :board :uuid)
@@ -107,18 +134,16 @@
           new-body (-> msg-body :content :new :body)
           new-abstract (-> msg-body :content :new :abstract)
           author-id (:user-id author)
-          user-id (:user-id author)
           comment-author (when (and comment? add?)
-                           (-> msg-body :content :new :author))]
-    
+                           (-> msg-body :content :new :author))
+          comment-author-wants-follow? (and comment? add? (:author-wants-follow? msg-body))]
       (timbre/info "Received message from SQS:" msg-body)
-
       ;; On an add/update of an entry, look for new follow-ups
       (when (and
              entry?
              (not draft?)
              (or add? update?))
-      
+
         (timbre/info "Processing change for follow-ups...")
         (let [old-entry (-> msg-body :content :old)
               prior-follow-ups (if (:draft old-entry) [] (:follow-ups old-entry))
@@ -140,7 +165,7 @@
              (not draft?)
              (or add? update?)
              (or entry? comment?))
-      
+
         (timbre/info "Processing change for mentions and inbox follows...")
         (let [old-body (-> msg-body :content :old :body)
               old-abstract (-> msg-body :content :old :abstract)
@@ -148,38 +173,47 @@
               prior-mentions (concat (mention/mention-parents old-body) (mention/mention-parents old-abstract))
               mentions (concat (mention/mention-parents new-body) (mention/mention-parents new-abstract))
               new-mentions (mention/new-mentions prior-mentions mentions)
-              comment-add? (and comment? add?)
               users-for-follow* (mention/users-from-mentions mentions)
-              users-for-follow (if comment-add?
+              users-for-follow (if comment-author-wants-follow?
                                  ;; In case of comment add let's add the comment author
                                  ;; to the list that needs to follow the current post
+                                 ;; if he wants follow
                                  (mapv first (vals
-                                  (group-by :user-id (conj users-for-follow* comment-author))))
+                                              (group-by :user-id (conj users-for-follow* comment-author))))
                                  users-for-follow*)]
           ;; Add follow for all mentioned users (no need to diff from the old, we will override the follow if present)
           (when (not-empty users-for-follow)
             (timbre/info "Requesting follow for" (count users-for-follow) "mention(s)" (if comment-add? " and comment author" ""))
             (storage-notification/send-trigger! (storage-notification/->trigger "follow" entry-id users-for-follow)))
           ;; If there are new mentions, we need to persist them
-          (when (not-empty new-mentions)
+          (when (and (not-empty new-mentions)
+                     author-id
+                     author)
             (timbre/info "Requesting persistence for" (count new-mentions) "mention(s).")
-            (doseq [mention new-mentions]
-              (if (= (:user-id mention) author-id) ; check for a self-mention
-                (timbre/info "Skipping notification creation for self-mention.")
-                (let [notification (if comment?
-                                     (notification/->InteractionNotification mention org-id board-id entry-id
-                                                                             entry-title secure-uuid interaction-id
-                                                                             parent-interaction-id change-at author)
-                                     (notification/->InteractionNotification mention org-id board-id entry-id
-                                                                             entry-title secure-uuid change-at author))]
-                  (>!! persistence/persistence-chan {:notify true
-                                                     :org org
-                                                     :notification notification})))))))
+            (doseq [mention new-mentions
+                    :let [self-mention? (= (:user-id mention) author-id)
+                          _ (when self-mention?
+                              (timbre/info "Skipping notification creation for self-mention."))
+                          allowed-user? (user-allowed? (:user-id mention) msg-body)
+                          _ (when-not allowed-user?
+                              (timbre/info "Skipping notification creation for mention since user is not allowed in the board anymore."))]
+                    :when (and (not self-mention?)
+                               allowed-user?)]
+              (let [notification (if comment?
+                                   (notification/->InteractionNotification mention org-id board-id entry-id
+                                                                           entry-title secure-uuid interaction-id
+                                                                           parent-interaction-id change-at author)
+                                   (notification/->InteractionNotification mention org-id board-id entry-id
+                                                                           entry-title secure-uuid change-at author))]
+                (timbre/info "Notify user" (:user-id mention) "for comment" interaction-id "on" entry-id)
+                (>!! persistence/persistence-chan {:notify true
+                                                   :org org
+                                                   :notification notification}))))))
 
       ;; On the add of a comment, where the user(s) to be notified (post author and authors of prior comments)
       ;; aren't also mentioned (and therefore already notified), notify them
       (when (and comment? add?)
-        (timbre/info "Proccessing comment on a entry...")
+        (timbre/info "Processing a new comment...")
         (let [publisher (:item-publisher msg-body)
               publisher-id (:user-id publisher)
               mentions (set (map :user-id (mention/new-mentions [] (mention/mention-parents new-body))))
@@ -192,10 +226,22 @@
           ;; Send a comment-add notification to storage to alert the clients to refresh thir inbox
           (timbre/info "Sending comment-add notification to Storage for" entry-id)
           (storage-notification/send-trigger! (storage-notification/->trigger "comment-add" entry-id [comment-author]))
-          (doseq [user notify-users-without-mentions]
-            (let [notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
+          (doseq [user notify-users-without-mentions
+                  :let [notification (notification/->InteractionNotification publisher new-body org-id board-id entry-id
                                                                              entry-title secure-uuid interaction-id
                                                                              parent-interaction-id change-at author user)]
+                  :when (user-allowed? (:user-id user) msg-body)]
+            (timbre/info "Notify user" (:user-id user) "for comment" interaction-id "on" entry-id)
+            (>!! persistence/persistence-chan {:notify true
+                                               :org org
+                                               :notification notification}))
+          (cond (= (:user-id publisher) author-id) ; check for a self-comment
+                (timbre/info "Skipping notification creation for self-comment.")
+                publisher-mentioned?
+                (timbre/info "Skipping comment notification due to prior mention notification.")
+                (not (user-allowed? (:user-id publisher) msg-body))
+                (timbre/info "Skipping comment notification due to user not allowed in board anymore.")
+                :else
                 (>!! persistence/persistence-chan {:notify true
                                                    :org org
                                                    :notification notification})))
@@ -228,22 +274,81 @@
                                            :entry-uuid entry-id
                                            :board-id board-id}))
 
+      ;; Premium changes notifications
+      (when (and team? premium?)
+        (timbre/info (str "Proccessing premium " premium-action " notification..."))
+        (case premium-action
+          :expiring
+          (do
+            (timbre/info "Notify team admins about expiring token")
+            (doseq [team-admin-id (:team-admins msg-body)
+                    :let [expire-notification (notification/->PaymentsNotification author (:team-id msg-body) org-id change-at premium-action team-admin-id)]]
+              (>!! persistence/persistence-chan {:notify true
+                                                 :org org
+                                                 :user-id team-admin-id
+                                                 :notification expire-notification})))
+          :on
+          (do
+            (timbre/info "Notify whole team of premium")
+            (doseq [user-id (:notify-users msg-body)
+                    :let [notification (notification/->PaymentsNotification author (:team-id msg-body) org-id change-at premium-action user-id)]]
+              (>!! persistence/persistence-chan {:notify true
+                                                 :org org
+                                                 :user-id user-id
+                                                 :notification notification})))
+          :off
+          (do
+            ;; Send a non-visible notification to have all team's users refresh their token
+            (timbre/info "Notify whole team of freemium fallback")
+            (doseq [user-id (:notify-users msg-body)
+                    :let [notification (notification/->PaymentsNotification author (:team-id msg-body) org-id change-at premium-action user-id)]]
+              (>!! persistence/persistence-chan {:notify true
+                                                 :org org
+                                                 :user-id user-id
+                                                 :notification notification})))
+          (timbre/info "No-op for premium-action: " premium-action)))
+
+      ;; User added to a new team, send notification
+      (when (and team? team-add?)
+        (timbre/info (str "Proccessing team add notification for user" (-> msg-body :invitee :user-id) "..."))
+        (let [team-add-notification (notification/->TeamAddNotification author org change-at (:invitee msg-body) (:admin? msg-body))]
+          (>!! persistence/persistence-chan {:notify true
+                                             :org org
+                                             :user-id (-> msg-body :invitee :user-id)
+                                             :notification team-add-notification})))
+
+      ;; User removed from a team, send notification
+      (when (and team? team-remove?)
+        (timbre/info (str "Proccessing team remove notification for user " (-> msg-body :removed-user :user-id) "..."))
+        (let [team-remove-notification (notification/->TeamRemoveNotification author org change-at (:removed-user msg-body) (:admin? msg-body))]
+          (>!! persistence/persistence-chan {:notify true
+                                             :org org
+                                             :user-id (-> msg-body :removed-user :user-id)
+                                             :notification team-remove-notification})))
+
       ;; Draft, org, board, or unknown
       (cond
-       draft?
-       (timbre/trace "Skipping draft message from SQS:" change-type resource-type)
+        draft?
+        (timbre/trace "Skipping draft message from SQS:" change-type resource-type)
 
-       (or comment? entry? (and reminder? add?))
-       true ; already handled
+        (or comment? entry? (and reminder? add?))
+        true ; already handled
 
-       (= resource-type :org)
-       (timbre/trace "Unhandled org message from SQS:" change-type resource-type)
+        (and team? premium-action)
+        true ; already handled
 
-       (= resource-type :board)
-       (timbre/trace "Unhandled board message from SQS:" change-type resource-type)
+        (= resource-type :org)
+        (timbre/trace "Unhandled org message from SQS:" change-type resource-type)
 
-       :else
-       (timbre/warn "Unknown message from SQS:" change-type resource-type))))
+        (= resource-type :board)
+        (timbre/trace "Unhandled board message from SQS:" change-type resource-type)
+
+        (and (= resource-type :team)
+             (not (#{:on :expiring} premium-action)))
+        (timbre/trace "Unhandled team message from SQS:" change-type resource-type)
+
+        :else
+        (timbre/warn "Unknown message from SQS:" change-type resource-type))))
 
   (sqs/ack done-channel msg))
 
@@ -272,18 +377,25 @@
     "AWS SQS storage queue: " c/aws-sqs-storage-queue "\n"
     "Hot-reload: " c/hot-reload "\n"
     "Ensure origin: " c/ensure-origin "\n"
-    "Sentry: " c/dsn "\n\n"
+    "UI endpoint: " c/ui-server-url "\n"
+    "Production: " c/prod? "\n"
+    "Sentry: " c/dsn "\n"
+    "  env: " c/sentry-env "\n"
+    (when-not (clojure.string/blank? c/sentry-release)
+      (str "  release: " c/sentry-release "\n"))
+    "\n"
     (when c/intro? "Ready to serve...\n"))))
 
 ;; Ring app definition
 (defn app [sys]
   (cond-> (routes sys)
-    c/dsn             (sentry-mw/wrap-sentry c/dsn) ; important that this is first
+    ; important that this is first
+    c/dsn             (sentry/wrap c/sentry-config)
     true              wrap-with-logger
     true              wrap-keyword-params
     true              wrap-params
     true              (wrap-cors #".*")
-    c/ensure-origin   wrap-ensure-origin
+    c/ensure-origin   (wrap-ensure-origin c/ui-server-url)
     c/hot-reload      wrap-reload))
 
 (defn start
@@ -294,11 +406,12 @@
   (if c/dsn
     (timbre/merge-config!
       {:level (keyword c/log-level)
-       :appenders {:sentry (sa/sentry-appender c/dsn)}})
+       :appenders {:sentry (sentry/sentry-appender c/sentry-config)}})
     (timbre/merge-config! {:level (keyword c/log-level)}))
 
   ;; Start the system
   (-> {:httpkit {:handler-fn app :port port}
+       :sentry c/sentry-config
        :sqs-consumer {
           :sqs-queue c/aws-sqs-notify-queue
           :message-handler sqs-handler

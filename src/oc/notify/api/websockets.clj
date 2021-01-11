@@ -3,6 +3,7 @@
   (:require [clojure.core.async :as async :refer (>!! <!)]
             [taoensso.sente :as sente]
             [taoensso.timbre :as timbre]
+            [oc.lib.sentry.core :as sentry]
             [compojure.core :as compojure :refer (defroutes GET POST)]
             [taoensso.sente.server-adapters.http-kit :refer (get-sch-adapter)]
             [oc.lib.jwt :as jwt]
@@ -75,8 +76,11 @@
         jwt-valid? (jwt/valid? (:jwt ?data) c/passphrase)]
     (timbre/info "[websocket] auth/jwt" (if jwt-valid? "valid" "invalid") "by" client-id)
     ;; Get the jwt and disconnect the client if it's not good!
-    (when ?reply-fn
-      (?reply-fn {:valid jwt-valid?}))))
+    (if ?reply-fn
+      (?reply-fn {:valid jwt-valid?})
+      (do
+        (timbre/warn "No reply function for :auth/jwt handler" (fn? ?reply-fn))
+        (sentry/capture "No reply function for :auth/jwt handler")))))
 
 (defmethod -event-msg-handler
   :chsk/ws-ping
@@ -149,7 +153,8 @@
               (timbre/info "[websocket] sending:" (first event) "to:" client-id)
               (chsk-send! client-id event))
             (catch Exception e
-              (timbre/error e)))))))))
+              (timbre/warn e)
+              (sentry/capture e)))))))))
 
 ;; ----- Ring routes -----
 
