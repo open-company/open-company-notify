@@ -8,7 +8,7 @@
             [oc.notify.resources.notification :as notification]))
 
 (def EmailTrigger
-  {:type (schema/enum "notify" "reminder-alert" "reminder-notification" "follow-up")
+  {:type (schema/enum "notify" "reminder-alert" "reminder-notification" "follow-up" "team")
    :user-id lib-schema/UniqueID
    :to lib-schema/EmailAddress
    (schema/optional-key :last-name) schema/Str
@@ -26,6 +26,8 @@
     :type (cond
             (contains? notification :reminder)
             (-> notification :reminder :notification-type)
+            (:team? notification)
+            "team"
             (:follow-up? notification)
             "follow-up"
             :else

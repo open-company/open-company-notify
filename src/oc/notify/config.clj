@@ -18,6 +18,11 @@
 ;; ----- Sentry -----
 
 (defonce dsn (or (env :open-company-sentry-notify) false))
+(defonce sentry-release (or (env :release) ""))
+(defonce sentry-env (or (env :environment) "local"))
+(defonce sentry-config {:dsn dsn
+                        :release sentry-release
+                        :environment sentry-env})
 
 ;; ----- Logging (see https://github.com/ptaoussanis/timbre) -----
 
@@ -53,6 +58,7 @@
 (defonce hot-reload (bool (or (env :hot-reload) false)))
 (defonce notify-server-port (Integer/parseInt (or (env :port) "3010")))
 (defonce ensure-origin (bool (or (env :oc-ws-ensure-origin) true)))
+(defonce ui-server-url (or (env :ui-server-url) "http://localhost:3559"))
 
 ;; ----- AWS SQS -----
 
