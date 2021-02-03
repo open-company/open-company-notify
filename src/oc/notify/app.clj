@@ -356,6 +356,7 @@
     "AWS SQS bot queue: " c/aws-sqs-bot-queue "\n"
     "AWS SQS notify queue: " c/aws-sqs-notify-queue "\n"
     "AWS SQS storage queue: " c/aws-sqs-storage-queue "\n"
+    "Log level: " c/log-level "\n"
     "Hot-reload: " c/hot-reload "\n"
     "Ensure origin: " c/ensure-origin "\n"
     "UI endpoint: " c/ui-server-url "\n"
@@ -384,7 +385,7 @@
   [port]
 
   ;; Stuff logged at error level goes to Sentry
-  (timbre/merge-config! {:level (keyword c/log-level)})
+  (timbre/merge-config! {:min-level (keyword c/log-level)})
 
   ;; Start the system
   (-> {:httpkit {:handler-fn app :port port}
