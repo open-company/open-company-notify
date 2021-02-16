@@ -147,7 +147,7 @@
         (do (reset! sender-go false) (timbre/info "Sender stopped."))
         (async/thread
           (try
-            (timbre/info "Sender received:" message)
+            (timbre/trace "Sender received:" message)
             (let [event (:event message)
                   client-id (or (:client-id message) (:id message))]
               (timbre/info "[websocket] sending:" (first event) "to:" client-id)
