@@ -137,7 +137,8 @@
           comment-author (when (and comment? add?)
                            (-> msg-body :content :new :author))
           comment-author-wants-follow? (and comment? add? (:author-wants-follow? msg-body))]
-      (timbre/info "Received message from SQS:" msg-body)
+      (timbre/infof "Received SQS message resource-type: %s, change-type: %s, premium-action: %s, org-id: %s, board-id: %s, entry-id: %s, secure-uuid: %s, interaction-id: %s, parent-interaction-id: %s, author-id: %s" resource-type change-type premium-action org-id board-id entry-id secure-uuid interaction-id parent-interaction-id author-id)
+      (timbre/debug "Received message from SQS:" msg-body)
       ;; On an add/update of an entry, look for new follow-ups
       (when (and
              entry?
