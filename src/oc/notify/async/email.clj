@@ -11,31 +11,31 @@
   {:type (schema/enum "notify" "reminder-alert" "reminder-notification" "follow-up" "team")
    :user-id lib-schema/UniqueID
    :to lib-schema/EmailAddress
-   (schema/optional-key :last-name) schema/Str
-   (schema/optional-key :first-name) schema/Str
-   (schema/optional-key :name) schema/Str
-   (schema/optional-key :avatar-url) (schema/maybe schema/Str)
-   (schema/optional-key :teams) (schema/maybe schema/Any)
-   (schema/optional-key :timezone) (schema/maybe schema/Str)
+   (lib-schema/o-k :last-name) schema/Str
+   (lib-schema/o-k :first-name) schema/Str
+   (lib-schema/o-k :name) schema/Str
+   (lib-schema/o-k :avatar-url) (schema/maybe schema/Str)
+   (lib-schema/o-k :teams) (schema/maybe schema/Any)
+   (lib-schema/o-k :timezone) (schema/maybe schema/Str)
    :org {schema/Any schema/Any}
+   (lib-schema/o-k :board) (schema/maybe {schema/Any schema/Any})
    :status schema/Str
    :notification notification/Notification})
 
-(defn ->trigger [notification org user]
-  (merge {
-    :type (cond
-            (contains? notification :reminder)
-            (-> notification :reminder :notification-type)
-            (:team? notification)
-            "team"
-            (:follow-up? notification)
-            "follow-up"
-            :else
-            "notify")
-    :to (:email user)
-    :notification notification
-    :org (dissoc org :author :authors :viewers :created-at :updated-at :promoted)}
-    (select-keys user [:user-id :last-name :first-name :name :avatar-url :teams :timezone :status])))
+(defn ->trigger [notification org board user]
+  (merge {:type (cond (contains? notification :reminder)
+                (-> notification :reminder :notification-type)
+                (:team? notification)
+                "team"
+                (:follow-up? notification)
+                "follow-up"
+                :else
+                "notify")
+          :to (:email user)
+          :notification notification
+          :org (dissoc org :author :authors :viewers :created-at :updated-at :promoted)
+          :board (dissoc board :description :updated-at :viewers :author  :created-at :authors)}
+         (select-keys user [:user-id :last-name :first-name :name :avatar-url :teams :timezone :status])))
 
 (defn send-trigger! [trigger]
   (timbre/info "Email request to queue:" config/aws-sqs-email-queue)

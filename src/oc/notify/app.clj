@@ -114,7 +114,10 @@
           comment-add? (and comment? add?)
           org (:org msg-body)
           org-id (:uuid org)
-          board-id (or (-> msg-body :board :uuid)
+          board (or (:board msg-body)
+                    {:uuid (:board-uuid msg-body)
+                     :access (:bord-access msg-body)})
+          board-id (or (:uuid board)
                        (:board-uuid msg-body))
           entry-key (if comment? :resource-uuid :uuid)
           entry-id (or (-> msg-body :content :new entry-key) ; new or update
@@ -137,8 +140,8 @@
           comment-author (when (and comment? add?)
                            (-> msg-body :content :new :author))
           comment-author-wants-follow? (and comment? add? (:author-wants-follow? msg-body))]
-      (timbre/infof "Received SQS message resource-type: %s, change-type: %s, premium-action: %s, org-id: %s, board-id: %s, entry-id: %s, secure-uuid: %s, interaction-id: %s, parent-interaction-id: %s, author-id: %s" resource-type change-type premium-action org-id board-id entry-id secure-uuid interaction-id parent-interaction-id author-id)
       (timbre/debug "Received message from SQS:" msg-body)
+      (timbre/infof "Received SQS message resource-type: %s, change-type: %s, premium-action: %s, org-id: %s, board-id: %s, entry-id: %s, secure-uuid: %s, interaction-id: %s, parent-interaction-id: %s, author-id: %s" resource-type change-type premium-action org-id board-id entry-id secure-uuid interaction-id parent-interaction-id author-id)
       ;; On an add/update of an entry, look for new follow-ups
       (when (and
              entry?
@@ -159,6 +162,7 @@
                                                                       secure-uuid follow-up author)]
                 (>!! persistence/persistence-chan {:notify true
                                                    :org org
+                                                   :board board
                                                    :notification notification}))))))
 
       ;; On an add/update of entry/comment, look for new mentions
@@ -206,9 +210,10 @@
                                                                            parent-interaction-id change-at author)
                                    (notification/->InteractionNotification mention org-id board-id entry-id
                                                                            entry-title secure-uuid change-at author))]
-                (timbre/info "Notify user" (:user-id mention) "for comment" interaction-id "on" entry-id)
+                (timbre/infof "Notify user %s of mention in %s %s%s" (:user-id mention) (if comment? "comment" "entry") interaction-id (when comment? (str " on entry " entry-id)))
                 (>!! persistence/persistence-chan {:notify true
                                                    :org org
+                                                   :board board
                                                    :notification notification}))))))
 
       ;; On the add of a comment, where the user(s) to be notified (post author and authors of prior comments)
@@ -235,6 +240,7 @@
             (timbre/info "Notify user" (:user-id user) "for comment" interaction-id "on" entry-id)
             (>!! persistence/persistence-chan {:notify true
                                                :org org
+                                               :board board
                                                :notification notification}))
           (cond (= (:user-id publisher) author-id) ; check for a self-comment
                 (timbre/info "Skipping notification creation for self-comment.")
@@ -245,6 +251,7 @@
                 :else
                 (>!! persistence/persistence-chan {:notify true
                                                    :org org
+                                                   :board board
                                                    :notification notification}))))
 
       ;; On the add of a new reminder, create a notification and persist it
@@ -254,6 +261,7 @@
               notification (notification/->ReminderNotification org-id reminder)]
           (>!! persistence/persistence-chan {:notify true
                                              :org org
+                                             :board board
                                              :notification notification})))
 
       ;; Premium changes notifications
@@ -357,6 +365,7 @@
     "AWS SQS bot queue: " c/aws-sqs-bot-queue "\n"
     "AWS SQS notify queue: " c/aws-sqs-notify-queue "\n"
     "AWS SQS storage queue: " c/aws-sqs-storage-queue "\n"
+    "AWS LAMBDA expo prefix: " c/aws-lambda-expo-prefix "\n"
     "Log level: " c/log-level "\n"
     "Hot-reload: " c/hot-reload "\n"
     "Ensure origin: " c/ensure-origin "\n"

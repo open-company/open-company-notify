@@ -59,7 +59,8 @@
     (>!! user/user-chan {:notify true
                          :notification notification
                          :user-id user-id
-                         :org (:org message)})))
+                         :org (:org message)
+                         :board (:board message)})))
 
   ([message]
   (timbre/warn "Unknown request in persistence channel" message)))

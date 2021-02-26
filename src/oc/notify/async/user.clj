@@ -36,7 +36,8 @@
           team? (:team? message)
           user-id (:user-id message)
           notification (:notification message)
-          org (:org message)]
+          org (:org message)
+          board (:board message)]
       (timbre/info "Handle user message for:" user-id)
       (if-let [notify-user (db-common/read-resource conn "users" user-id)]
         (do
@@ -44,8 +45,8 @@
           (case (if reminder?
                   (:reminder-medium notify-user)
                   (:notification-medium notify-user))
-            "slack" (bot/send-trigger! (bot/->trigger conn notification org notify-user))
-            "email" (email/send-trigger! (email/->trigger notification org notify-user))
+            "slack" (bot/send-trigger! (bot/->trigger conn notification org board notify-user))
+            "email" (email/send-trigger! (email/->trigger notification org board notify-user))
             (timbre/info "Skipping out-of-app notification for user:" user-id)))
         (timbre/warn "Notification for non-existent user:" user-id)))))
 
