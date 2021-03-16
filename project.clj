@@ -50,7 +50,7 @@
     ;; ***************** (JWT schema changes, more info here: *****************
     ;; ******* https://github.com/open-company/open-company-lib/pull/82) ******
     ;; ************************************************************************
-    [open-company/lib "0.17.35-alpha" :exclusions [commons-codec org.clojure/tools.reader]]
+    [open-company/lib "0.17.35-alpha2" :exclusions [commons-codec org.clojure/tools.reader]]
     ;; ************************************************************************
     ;; In addition to common functions, brings in the following common dependencies used by this project:
     ;; httpkit - Web server http://http-kit.org/

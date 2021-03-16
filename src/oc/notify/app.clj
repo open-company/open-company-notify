@@ -371,10 +371,7 @@
     "Ensure origin: " c/ensure-origin "\n"
     "UI endpoint: " c/ui-server-url "\n"
     "Production: " c/prod? "\n"
-    "Sentry: " c/dsn "\n"
-    "  env: " c/sentry-env "\n"
-    (when-not (clojure.string/blank? c/sentry-release)
-      (str "  release: " c/sentry-release "\n"))
+    "Sentry: " c/sentry-config "\n"
     "\n"
     (when c/intro? "Ready to serve...\n"))))
 
